@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 
 export default function Register() {
   // ✅ Your working backend base URL
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({
     first_name: "",

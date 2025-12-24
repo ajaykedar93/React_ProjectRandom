@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://express-projectrandom.onrender.com";
 
 export default function Gettextdoc() {
   const [docs, setDocs] = useState([]);

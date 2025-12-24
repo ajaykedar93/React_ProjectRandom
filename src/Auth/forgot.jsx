@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 export default function Forgot() {
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = "https://express-projectrandom.onrender.com";
 
   const [step, setStep] = useState("email"); // email -> otp -> reset
   const [emailLocked, setEmailLocked] = useState(false);

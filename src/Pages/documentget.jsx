@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function DocumentGet() {
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = "https://express-projectrandom.onrender.com";
   const navigate = useNavigate();
 
   const [docs, setDocs] = useState([]);

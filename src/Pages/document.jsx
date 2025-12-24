@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function DocumentUpload() {
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = "https://express-projectrandom.onrender.com";
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
