@@ -13,7 +13,7 @@ import DashboardHome from "./Pages/DashboardHome";
 import DocumentUpload from "./Pages/document";
 import DocumentGet from "./Pages/documentget";
 
-/* ✅ NEW text document pages */
+/* Text document pages */
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
 
@@ -21,7 +21,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Default */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Auth */}
@@ -29,16 +28,11 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot" element={<Forgot />} />
 
-        {/* Dashboard layout */}
+        {/* Dashboard */}
         <Route path="/dashboard" element={<Dashboard />}>
-          {/* Home */}
           <Route index element={<DashboardHome />} />
-
-          {/* Existing document pages */}
           <Route path="document" element={<DocumentUpload />} />
           <Route path="documentget" element={<DocumentGet />} />
-
-          {/* ✅ NEW text document pages */}
           <Route path="addtextdoc" element={<Addtextdoc />} />
           <Route path="gettextdoc" element={<Gettextdoc />} />
         </Route>
