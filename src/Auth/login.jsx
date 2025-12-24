@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
-  const API_BASE = "https://express-projectrandom.onrender.com";
+  const navigate = useNavigate();
+
+  // ✅ better: use env in Vercel. fallback is your render api.
+  const API_BASE =
+    import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -14,7 +19,8 @@ export default function Login() {
     message: "",
   });
 
-  const openModal = (type, title, message) => setModal({ open: true, type, title, message });
+  const openModal = (type, title, message) =>
+    setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
   // ✅ ESC close modal
@@ -69,17 +75,18 @@ export default function Login() {
 
     try {
       setLoading(true);
+
       const data = await apiPost("/api/auth/login", {
         username: form.username.trim(),
         password: form.password,
       });
 
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+
       openModal("success", "Login Success", data?.message || "Logged in successfully ✅");
 
-      setTimeout(() => {
-        localStorage.setItem("auth_user", JSON.stringify(data.user));
-        window.location.href = "/dashboard"; // ✅ redirect dashboard
-      }, 900);
+      // ✅ SPA navigation (works with back button)
+      setTimeout(() => navigate("/dashboard", { replace: true }), 600);
     } catch (err) {
       openModal("error", "Login Failed", err.message || "Invalid credentials");
     } finally {
@@ -92,7 +99,7 @@ export default function Login() {
       <style>{css}</style>
       <div className="bg" />
 
-      {/* ✅ Center Modal (Professional) */}
+      {/* ✅ Center Modal */}
       {modal.open ? (
         <div className="mb" onClick={closeModal} role="dialog" aria-modal="true">
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -112,7 +119,6 @@ export default function Login() {
         </div>
       ) : null}
 
-      {/* ✅ Added line ABOVE login card */}
       <div className="wrap">
         <div className="devline" aria-label="developer-credit">
           <span className="codeIcon" aria-hidden="true">
@@ -162,14 +168,15 @@ export default function Login() {
             {loading ? "Logging in..." : "Login"}
           </button>
 
+          {/* ✅ React Router links (no reload, back button works) */}
           <div className="links">
-            <span className="link" onClick={() => (window.location.href = "/register")}>
+            <Link className="link" to="/register">
               Create account (Register)
-            </span>
+            </Link>
             <span className="dot">•</span>
-            <span className="link" onClick={() => (window.location.href = "/forgot")}>
+            <Link className="link" to="/forgot">
               Forgot Password?
-            </span>
+            </Link>
           </div>
         </form>
       </div>
@@ -198,7 +205,6 @@ const css = `
     box-sizing:border-box;
   }
 
-  /* Bright colorful gradient background */
   .bg{
     position:fixed;
     inset:0;
@@ -211,14 +217,8 @@ const css = `
     pointer-events:none;
   }
 
-  /* ✅ Wrapper so dev line stays above card, centered */
-  .wrap{
-    width:100%;
-    max-width:520px;
-    z-index:1;
-  }
+  .wrap{ width:100%; max-width:520px; z-index:1; }
 
-  /* ✅ Developer credit line */
   .devline{
     width:100%;
     display:flex;
@@ -234,18 +234,8 @@ const css = `
     box-shadow: 0 14px 40px rgba(0,0,0,.10);
     user-select:none;
   }
-  .codeIcon{
-    font-weight: 1000;
-    color:#ff2d55;        /* ✅ red code icon */
-    font-size: 16px;
-    letter-spacing: .2px;
-  }
-  .devText{
-    font-weight: 980;     /* ✅ bold professional */
-    color: rgba(11,18,32,.88);
-    font-size: 13px;
-    letter-spacing: .3px;
-  }
+  .codeIcon{ font-weight: 1000; color:#ff2d55; font-size: 16px; letter-spacing: .2px; }
+  .devText{ font-weight: 980; color: rgba(11,18,32,.88); font-size: 13px; letter-spacing: .3px; }
 
   .card{
     width:100%;
@@ -259,26 +249,11 @@ const css = `
   }
 
   .head{ text-align:center; margin-bottom:14px; }
-  .title{
-    margin:0;
-    font-weight:950;
-    color:var(--txt);
-    font-size: clamp(22px, 3.2vw, 30px);
-  }
-  .sub{
-    margin:8px 0 0;
-    color:var(--muted);
-    font-weight:700;
-    font-size: clamp(12px, 1.8vw, 14px);
-  }
+  .title{ margin:0; font-weight:950; color:var(--txt); font-size: clamp(22px, 3.2vw, 30px); }
+  .sub{ margin:8px 0 0; color:var(--muted); font-weight:700; font-size: clamp(12px, 1.8vw, 14px); }
 
   .field{ display:flex; flex-direction:column; margin-top:12px; }
-  .label{
-    font-size:12px;
-    font-weight:900;
-    color: rgba(11,18,32,.85);
-    margin-bottom:6px;
-  }
+  .label{ font-size:12px; font-weight:900; color: rgba(11,18,32,.85); margin-bottom:6px; }
   .req{ color:#ff2d55; }
 
   .input{
@@ -302,12 +277,7 @@ const css = `
     box-shadow: 0 0 0 5px rgba(255,45,85,.10);
   }
 
-  .eTxt{
-    margin-top:6px;
-    font-size:12px;
-    font-weight:800;
-    color:#ff2d55;
-  }
+  .eTxt{ margin-top:6px; font-size:12px; font-weight:800; color:#ff2d55; }
 
   .submit{
     margin-top:18px;
@@ -343,7 +313,6 @@ const css = `
   }
   .dot{ opacity:.6; }
 
-  /* ✅ Professional Center Modal */
   .mb{
     position:fixed;
     inset:0;
