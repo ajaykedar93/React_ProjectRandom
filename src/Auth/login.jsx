@@ -11,6 +11,7 @@ export default function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isAdmin, setIsAdmin] = useState(false); // ✅ toggle
 
   const [modal, setModal] = useState({
     open: false,
@@ -40,12 +41,19 @@ export default function Login() {
 
   const validate = () => {
     const err = {};
-    if (!form.username.trim()) err.username = "Email or Mobile required";
+    if (!form.username.trim())
+      err.username = isAdmin ? "Admin email required" : "Email or Mobile required";
     if (!form.password) err.password = "Password required";
     setErrors(err);
 
     if (Object.keys(err).length) {
-      openModal("error", "Missing Fields", "Please enter Email/Mobile and Password.");
+      openModal(
+        "error",
+        "Missing Fields",
+        isAdmin
+          ? "Please enter Admin Email and Password."
+          : "Please enter Email/Mobile and Password."
+      );
     }
     return Object.keys(err).length === 0;
   };
@@ -76,19 +84,34 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const data = await apiPost("/api/auth/login", {
+      // ✅ USER vs ADMIN endpoint
+      const endpoint = isAdmin ? "/api/auth/admin-login" : "/api/auth/login";
+
+      const data = await apiPost(endpoint, {
         username: form.username.trim(),
         password: form.password,
       });
 
+      // ✅ Save user (admin returns {role:"admin"} ideally)
       localStorage.setItem("auth_user", JSON.stringify(data.user));
 
-      openModal("success", "Login Success", data?.message || "Logged in successfully ✅");
+      openModal(
+        "success",
+        isAdmin ? "Admin Login Success" : "Login Success",
+        data?.message || "Logged in successfully ✅"
+      );
 
-      // ✅ SPA navigation (works with back button)
-      setTimeout(() => navigate("/dashboard", { replace: true }), 600);
+      // ✅ Redirect: Admin -> AdminDashboard, User -> Dashboard
+      setTimeout(() => {
+        if (isAdmin) navigate("/admin/dashboard", { replace: true });
+        else navigate("/dashboard", { replace: true });
+      }, 600);
     } catch (err) {
-      openModal("error", "Login Failed", err.message || "Invalid credentials");
+      openModal(
+        "error",
+        isAdmin ? "Admin Login Failed" : "Login Failed",
+        err.message || "Invalid credentials"
+      );
     } finally {
       setLoading(false);
     }
@@ -129,20 +152,39 @@ export default function Login() {
 
         <form className="card" onSubmit={handleSubmit}>
           <div className="head">
-            <h2 className="title">Login</h2>
-            <p className="sub">Welcome back • Secure Sign-in</p>
+            <h2 className="title">{isAdmin ? "Admin Login" : "Login"}</h2>
+            <p className="sub">
+              {isAdmin ? "Admin access • Secure Sign-in" : "Welcome back • Secure Sign-in"}
+            </p>
+          </div>
+
+          {/* ✅ Toggle */}
+          <div className="modeRow" aria-label="login-mode-toggle">
+            <span className={`modeTag ${!isAdmin ? "on" : ""}`}>User</span>
+
+            <button
+              type="button"
+              className={`toggle ${isAdmin ? "on" : ""}`}
+              onClick={() => setIsAdmin((p) => !p)}
+              aria-pressed={isAdmin}
+              title={isAdmin ? "Switch to User Login" : "Switch to Admin Login"}
+            >
+              <span className="knob" />
+            </button>
+
+            <span className={`modeTag ${isAdmin ? "on" : ""}`}>Admin</span>
           </div>
 
           <div className="field">
             <label className="label">
-              Email / Mobile <span className="req">*</span>
+              {isAdmin ? "Admin Email" : "Email / Mobile"} <span className="req">*</span>
             </label>
             <input
               className={`input ${errors.username ? "err" : ""}`}
               name="username"
               value={form.username}
               onChange={handleChange}
-              placeholder="Enter email or mobile number"
+              placeholder={isAdmin ? "Enter admin email" : "Enter email or mobile number"}
               autoComplete="username"
             />
             {errors.username ? <div className="eTxt">{errors.username}</div> : null}
@@ -165,18 +207,25 @@ export default function Login() {
           </div>
 
           <button type="submit" className="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : isAdmin ? "Login as Admin" : "Login"}
           </button>
 
-          {/* ✅ React Router links (no reload, back button works) */}
           <div className="links">
-            <Link className="link" to="/register">
-              Create account (Register)
-            </Link>
-            <span className="dot">•</span>
-            <Link className="link" to="/forgot">
-              Forgot Password?
-            </Link>
+            {!isAdmin ? (
+              <>
+                <Link className="link" to="/register">
+                  Create account (Register)
+                </Link>
+                <span className="dot">•</span>
+                <Link className="link" to="/forgot">
+                  Forgot Password?
+                </Link>
+              </>
+            ) : (
+              <>
+                <span className="dot">Admin mode enabled</span>
+              </>
+            )}
           </div>
         </form>
       </div>
@@ -251,6 +300,59 @@ const css = `
   .head{ text-align:center; margin-bottom:14px; }
   .title{ margin:0; font-weight:950; color:var(--txt); font-size: clamp(22px, 3.2vw, 30px); }
   .sub{ margin:8px 0 0; color:var(--muted); font-weight:700; font-size: clamp(12px, 1.8vw, 14px); }
+
+  .modeRow{
+    margin: 14px auto 4px;
+    width: fit-content;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.65);
+    border: 1px solid rgba(11,18,32,.08);
+    backdrop-filter: blur(10px);
+  }
+  .modeTag{
+    font-size: 12px;
+    font-weight: 950;
+    color: rgba(11,18,32,.55);
+    letter-spacing:.2px;
+  }
+  .modeTag.on{
+    color: rgba(11,18,32,.88);
+  }
+  .toggle{
+    width: 46px;
+    height: 26px;
+    border-radius: 999px;
+    border: 1px solid rgba(11,18,32,.14);
+    background: rgba(11,18,32,.10);
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+    transition: background .18s ease, border-color .18s ease;
+  }
+  .toggle.on{
+    background: rgba(34,197,94,.22);
+    border-color: rgba(34,197,94,.35);
+  }
+  .knob{
+    position:absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    transition: transform .18s ease;
+  }
+  .toggle.on .knob{
+    transform: translateX(20px);
+  }
 
   .field{ display:flex; flex-direction:column; margin-top:12px; }
   .label{ font-size:12px; font-weight:900; color: rgba(11,18,32,.85); margin-bottom:6px; }

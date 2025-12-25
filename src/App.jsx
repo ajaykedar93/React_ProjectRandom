@@ -17,6 +17,9 @@ import DocumentGet from "./Pages/documentget";
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
 
+/* ✅ Admin */
+import AdminDashboard from "./Pages/Admindashboard";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -27,6 +30,9 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot" element={<Forgot />} />
+
+        {/* ✅ Admin Dashboard */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
         {/* Dashboard */}
         <Route path="/dashboard" element={<Dashboard />}>

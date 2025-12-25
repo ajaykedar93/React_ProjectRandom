@@ -1,7 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Forgot() {
-  const API_BASE = "https://express-projectrandom.onrender.com";
+  const navigate = useNavigate();
+
+  const API_BASE =
+    import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
 
   const [step, setStep] = useState("email"); // email -> otp -> reset
   const [emailLocked, setEmailLocked] = useState(false);
@@ -36,13 +40,11 @@ export default function Forgot() {
       data = JSON.parse(text);
     } catch {}
 
-    if (!res.ok) {
-      throw new Error(data?.message || text || `Request failed (HTTP ${res.status})`);
-    }
+    if (!res.ok) throw new Error(data?.message || text || `Request failed (HTTP ${res.status})`);
     return data || {};
   }
 
-  // ✅ STEP 1: Check email exists in DB + send OTP
+  // ✅ STEP 1: Send OTP
   const sendOtp = async () => {
     setErrors({});
     const em = normalizeEmail(email);
@@ -56,10 +58,6 @@ export default function Forgot() {
     try {
       setLoading((p) => ({ ...p, send: true }));
 
-      // ✅ IMPORTANT:
-      // Your current backend send-otp blocks emails that are already registered.
-      // For Forgot Password, backend must allow sending OTP for existing email.
-      // Use separate endpoint: /api/auth/forgot/send-otp (recommended)
       const data = await apiPost("/api/auth/forgot/send-otp", { email_address: em });
 
       setStep("otp");
@@ -73,7 +71,7 @@ export default function Forgot() {
   };
 
   // ✅ STEP 2: Verify OTP
-  const verifyOtp = async () => {
+  const verifyOtpFn = async () => {
     setErrors({});
     const em = normalizeEmail(email);
 
@@ -86,7 +84,6 @@ export default function Forgot() {
     try {
       setLoading((p) => ({ ...p, verify: true }));
 
-      // recommended endpoint for forgot flow:
       const data = await apiPost("/api/auth/forgot/verify-otp", { email_address: em, otp });
 
       setVerifyToken(data.verify_token || "");
@@ -102,6 +99,7 @@ export default function Forgot() {
   // ✅ STEP 3: Reset Password
   const resetPassword = async () => {
     setErrors({});
+
     if (!newPass || newPass.length < 6) {
       setErrors({ newPass: "Password must be at least 6 characters" });
       openModal("error", "Weak Password", "Password must be at least 6 characters.");
@@ -128,9 +126,8 @@ export default function Forgot() {
 
       openModal("success", "Password Updated", data?.message || "Password reset successfully ✅");
 
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 900);
+      // ✅ SPA navigation (Vercel back button works)
+      setTimeout(() => navigate("/login", { replace: true }), 900);
     } catch (err) {
       openModal("error", "Reset Failed", err.message);
     } finally {
@@ -167,7 +164,9 @@ export default function Forgot() {
         {step === "email" ? (
           <>
             <div className="field">
-              <label className="label">Email Address <span className="req">*</span></label>
+              <label className="label">
+                Email Address <span className="req">*</span>
+              </label>
               <input
                 className={`input ${errors.email ? "err" : ""}`}
                 placeholder="Enter registered email"
@@ -208,7 +207,7 @@ export default function Forgot() {
                   inputMode="numeric"
                   maxLength={6}
                 />
-                <button className="btn2" type="button" onClick={verifyOtp} disabled={loading.verify}>
+                <button className="btn2" type="button" onClick={verifyOtpFn} disabled={loading.verify}>
                   {loading.verify ? "Verifying..." : "Verify OTP"}
                 </button>
               </div>
@@ -231,7 +230,9 @@ export default function Forgot() {
             </div>
 
             <div className="field">
-              <label className="label">New Password <span className="req">*</span></label>
+              <label className="label">
+                New Password <span className="req">*</span>
+              </label>
               <input
                 className={`input ${errors.newPass ? "err" : ""}`}
                 type="password"
@@ -244,7 +245,9 @@ export default function Forgot() {
             </div>
 
             <div className="field">
-              <label className="label">Confirm Password <span className="req">*</span></label>
+              <label className="label">
+                Confirm Password <span className="req">*</span>
+              </label>
               <input
                 className={`input ${errors.confirmPass ? "err" : ""}`}
                 type="password"
@@ -262,17 +265,17 @@ export default function Forgot() {
           </>
         ) : null}
 
+        {/* ✅ fixed navigation (no reload) */}
         <div className="links">
-          <span className="link" onClick={() => (window.location.href = "/login")}>
+          <Link className="link" to="/login">
             Back to Login
-          </span>
+          </Link>
           <span className="dot">•</span>
-          <span className="link" onClick={() => (window.location.href = "/register")}>
+          <Link className="link" to="/register">
             Register
-          </span>
+          </Link>
         </div>
 
-        {/* small note */}
         {!emailLocked ? null : <div className="note">Email is locked after OTP step ✅</div>}
       </div>
     </div>
@@ -474,7 +477,6 @@ const css = `
     color:rgba(11,18,32,.65);
   }
 
-  /* ✅ CENTER MODAL */
   .mb{
     position:fixed;
     inset:0;

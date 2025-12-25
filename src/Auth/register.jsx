@@ -1,8 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Register() {
-  // ✅ Your working backend base URL
-  const API_BASE = "https://express-projectrandom.onrender.com";
+  const navigate = useNavigate();
+
+  // ✅ backend base URL (recommended: set VITE_API_BASE in Vercel)
+  const API_BASE =
+    import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({
     first_name: "",
@@ -23,7 +27,11 @@ export default function Register() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [verifyToken, setVerifyToken] = useState("");
 
-  const [loading, setLoading] = useState({ sendOtp: false, verifyOtp: false, register: false });
+  const [loading, setLoading] = useState({
+    sendOtp: false,
+    verifyOtp: false,
+    register: false,
+  });
 
   const [errors, setErrors] = useState({});
   const [modal, setModal] = useState({
@@ -33,11 +41,13 @@ export default function Register() {
     message: "",
   });
 
-  const openModal = (type, title, message) => setModal({ open: true, type, title, message });
+  const openModal = (type, title, message) =>
+    setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
   const normalizeEmail = (e) => String(e || "").trim().toLowerCase();
-  const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
+  const isValidEmail = (e) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
   const isValidMobile = (m) => /^[0-9]{10}$/.test(String(m || "").trim());
   const isValidPincode = (p) => !p || /^[0-9]{6}$/.test(String(p || "").trim());
 
@@ -45,7 +55,13 @@ export default function Register() {
     () => [
       { key: "first_name", label: "First Name", type: "text", required: true },
       { key: "last_name", label: "Last Name", type: "text", required: true },
-      { key: "mobile_number", label: "Mobile Number", type: "tel", required: true, maxLength: 10 },
+      {
+        key: "mobile_number",
+        label: "Mobile Number",
+        type: "tel",
+        required: true,
+        maxLength: 10,
+      },
       { key: "email_address", label: "Email Address", type: "email", required: true },
 
       { key: "village_city", label: "Village / City (Optional)", type: "text", full: true },
@@ -55,7 +71,13 @@ export default function Register() {
       { key: "pincode", label: "Pincode (Optional)", type: "text", maxLength: 6 },
 
       { key: "password", label: "Password", type: "password", required: true, full: true },
-      { key: "confirm_password", label: "Confirm Password", type: "password", required: true, full: true },
+      {
+        key: "confirm_password",
+        label: "Confirm Password",
+        type: "password",
+        required: true,
+        full: true,
+      },
     ],
     []
   );
@@ -65,7 +87,6 @@ export default function Register() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // numeric-only inputs
     if (name === "mobile_number") {
       const v = value.replace(/\D/g, "").slice(0, 10);
       setForm((p) => ({ ...p, mobile_number: v }));
@@ -81,7 +102,6 @@ export default function Register() {
       return;
     }
 
-    // If email changes (allowed only before verification)
     if (name === "email_address" && !emailVerified) {
       setOtpSent(false);
       setOtp("");
@@ -102,9 +122,7 @@ export default function Register() {
     let data = null;
     try {
       data = JSON.parse(text);
-    } catch {
-      // not json
-    }
+    } catch {}
 
     if (!res.ok) {
       throw new Error(data?.message || text || `Request failed (HTTP ${res.status})`);
@@ -117,7 +135,8 @@ export default function Register() {
 
     if (!form.first_name.trim()) err.first_name = "First name required";
     if (!form.last_name.trim()) err.last_name = "Last name required";
-    if (!isValidMobile(form.mobile_number)) err.mobile_number = "Mobile number must be 10 digits";
+    if (!isValidMobile(form.mobile_number))
+      err.mobile_number = "Mobile number must be 10 digits";
 
     const email = normalizeEmail(form.email_address);
     if (!isValidEmail(email)) err.email_address = "Invalid email address";
@@ -125,11 +144,13 @@ export default function Register() {
     if (!isValidPincode(form.pincode)) err.pincode = "Pincode must be 6 digits";
 
     if (!form.password) err.password = "Password required";
-    if (String(form.password || "").length < 6) err.password = "Password must be at least 6 characters";
+    if (String(form.password || "").length < 6)
+      err.password = "Password must be at least 6 characters";
     if (!form.confirm_password) err.confirm_password = "Confirm password required";
     if (form.password !== form.confirm_password) err.confirm_password = "Password not match";
 
-    if (!emailVerified || !verifyToken) err.email_verify = "Please verify your email OTP first";
+    if (!emailVerified || !verifyToken)
+      err.email_verify = "Please verify your email OTP first";
 
     setErrors(err);
 
@@ -160,7 +181,11 @@ export default function Register() {
       setEmailVerified(false);
       setVerifyToken("");
 
-      openModal("success", "OTP Sent", "OTP has been sent to your email. Please enter OTP and verify.");
+      openModal(
+        "success",
+        "OTP Sent",
+        "OTP has been sent to your email. Please enter OTP and verify."
+      );
     } catch (err) {
       openModal("error", "OTP Send Failed", err.message);
     } finally {
@@ -226,9 +251,8 @@ export default function Register() {
 
       openModal("success", "Registered", data?.message || "Account created successfully ✅");
 
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 900);
+      // ✅ Vercel SPA navigation (no reload)
+      setTimeout(() => navigate("/login", { replace: true }), 900);
     } catch (err) {
       openModal("error", "Register Failed", err.message);
     } finally {
@@ -236,14 +260,13 @@ export default function Register() {
     }
   };
 
-  const emailLocked = emailVerified; // ✅ after verify, lock email
+  const emailLocked = emailVerified;
 
   return (
     <div className="rp">
       <style>{css}</style>
       <div className="bg" />
 
-      {/* ✅ Center Modal (all alerts) */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -276,7 +299,9 @@ export default function Register() {
                 </label>
 
                 <input
-                  className={`input ${errors[f.key] ? "err" : ""} ${isEmail && emailLocked ? "locked" : ""}`}
+                  className={`input ${errors[f.key] ? "err" : ""} ${
+                    isEmail && emailLocked ? "locked" : ""
+                  }`}
                   name={f.key}
                   type={f.type || "text"}
                   placeholder={f.label.replace(" (Optional)", "")}
@@ -299,7 +324,6 @@ export default function Register() {
 
                 {errors[f.key] ? <div className="eTxt">{errors[f.key]}</div> : null}
 
-                {/* ✅ Send OTP button below email (only before verified) */}
                 {isEmail ? (
                   <div className="emailActions">
                     {!emailVerified ? (
@@ -321,7 +345,6 @@ export default function Register() {
           })}
         </div>
 
-        {/* ✅ OTP input appears only after Send OTP */}
         {!emailVerified && otpSent ? (
           <div className="otpBox">
             <div className="otpTop">
@@ -340,7 +363,12 @@ export default function Register() {
                 maxLength={6}
               />
 
-              <button type="button" className="otpBtn" onClick={verifyOtp} disabled={loading.verifyOtp}>
+              <button
+                type="button"
+                className="otpBtn"
+                onClick={verifyOtp}
+                disabled={loading.verifyOtp}
+              >
                 {loading.verifyOtp ? "Verifying..." : "Verify OTP"}
               </button>
             </div>
@@ -357,11 +385,12 @@ export default function Register() {
           {loading.register ? "Registering..." : "Register"}
         </button>
 
+        {/* ✅ fixed navigation (no reload) */}
         <p className="foot">
           Already have an account?{" "}
-          <span className="link" onClick={() => (window.location.href = "/login")}>
+          <Link className="link" to="/login">
             Login
-          </span>
+          </Link>
         </p>
       </form>
     </div>
@@ -390,7 +419,6 @@ const css = `
     box-sizing:border-box;
   }
 
-  /* ✅ Bright colorful gradient background */
   .bg{
     position:fixed;
     inset:0;
@@ -574,7 +602,6 @@ const css = `
     text-decoration: underline;
   }
 
-  /* ✅ CENTER MODAL */
   .mb{
     position:fixed;
     inset:0;
@@ -623,7 +650,6 @@ const css = `
     cursor:pointer;
   }
 
-  /* ✅ Mobile responsive */
   @media (max-width: 640px){
     .rp{ padding:14px; }
     .card{ padding:16px; border-radius:18px; }
