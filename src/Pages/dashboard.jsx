@@ -1,47 +1,55 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext.jsx";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
- const tabs = useMemo(
-  () => [
-    { label: "Home", path: "/dashboard" },
-    { label: "Document", path: "/dashboard/document" },
-    { label: "Get Document", path: "/dashboard/documentget" },
+  const { user, logout: ctxLogout } = useAuth();
 
-    // ✅ NEW TEXT DOC TABS
-    { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
-    { label: "Get Text Docs", path: "/dashboard/gettextdoc" },
-  ],
-  []
-);
+  const tabs = useMemo(
+    () => [
+      { label: "Home", path: "/dashboard" },
+      { label: "Document", path: "/dashboard/document" },
+      { label: "Get Document", path: "/dashboard/documentget" },
 
+      // ✅ TEXT DOC
+      { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
+      { label: "Get Text Docs", path: "/dashboard/gettextdoc" },
 
+    
+    ],
+    []
+  );
+
+  // ✅ user from AuthContext (ProtectedRoute ensures this exists)
   const [me, setMe] = useState(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("auth_user");
-      if (!saved) {
-        navigate("/login", { replace: true });
-        return;
-      }
-      setMe(JSON.parse(saved));
-    } catch {
-      navigate("/login", { replace: true });
-    }
-  }, [navigate]);
+    setMe(user || null);
+  }, [user]);
 
   const displayName =
-    me?.full_name || [me?.first_name, me?.last_name].filter(Boolean).join(" ") || "User";
+    me?.full_name ||
+    [me?.first_name, me?.last_name].filter(Boolean).join(" ") ||
+    me?.name ||
+    me?.displayName ||
+    "User";
+
   const displayEmail = me?.email_address || me?.email || "";
 
   const logout = () => {
     try {
+      // ✅ preferred: context logout (if your context supports it)
+      if (typeof ctxLogout === "function") ctxLogout();
+    } catch {}
+
+    // ✅ keep your old cleanup also (safe)
+    try {
       localStorage.removeItem("auth_user");
     } catch {}
+
     navigate("/login", { replace: true });
   };
 
@@ -51,11 +59,10 @@ export default function Dashboard() {
     return activePath === tabPath || activePath.startsWith(tabPath + "/");
   };
 
-  // ✅ IMPORTANT: use container ref for horizontal scrolling
+  // ✅ tab scroll refs
   const tabListRef = useRef(null);
   const tabRefs = useRef({});
 
-  // ✅ Best: scroll ONLY inside tab bar (not page)
   const scrollActiveTabIntoView = () => {
     const activeTab = tabs.find((t) => getIsActive(t.path));
     if (!activeTab) return;
@@ -64,23 +71,18 @@ export default function Dashboard() {
     const el = tabRefs.current[activeTab.path];
     if (!container || !el) return;
 
-    // If desktop vertical list -> do nothing special
-    // For mobile horizontal list -> scroll container
     const isHorizontal = window.matchMedia("(max-width: 740px)").matches;
     if (!isHorizontal) return;
 
     const containerRect = container.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
 
-    // Distance from container left
     const left = elRect.left - containerRect.left;
     const right = elRect.right - containerRect.left;
 
-    // If not fully visible -> scroll so it becomes visible (center-ish)
     if (left < 0 || right > containerRect.width) {
       const target =
-        container.scrollLeft +
-        (left - containerRect.width / 2 + elRect.width / 2);
+        container.scrollLeft + (left - containerRect.width / 2 + elRect.width / 2);
 
       container.scrollTo({
         left: Math.max(0, target),
@@ -133,7 +135,6 @@ export default function Dashboard() {
             <div className="sideTitle">Menu</div>
 
             <div className="tabStrip">
-              {/* ✅ ref added */}
               <div
                 ref={tabListRef}
                 className="tabList"
@@ -198,7 +199,7 @@ const css = `
     flex-direction: column;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    overflow: hidden; /* ✅ full page never scroll */
+    overflow: hidden;
   }
 
   .bg{
@@ -290,7 +291,6 @@ const css = `
 
   .tabStrip{ position: relative; }
 
-  /* desktop vertical */
   .tabList{
     display:flex;
     flex-direction: column;
@@ -342,7 +342,7 @@ const css = `
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
     overflow-y: auto;
-    overflow-x: hidden; /* ✅ never full page horizontal scroll */
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 28px;
   }
@@ -352,7 +352,6 @@ const css = `
     .sideCard{ height: auto; }
   }
 
-  /* ✅ MOBILE TABS SETTINGS */
   @media (max-width: 740px){
     .top{ flex-direction: column; align-items: stretch; }
     .right{ width: 100%; justify-content: space-between; align-items: flex-start; }
@@ -360,7 +359,6 @@ const css = `
     .devline{ justify-content: flex-start; }
     .brandSub{ display:none; }
 
-    /* ✅ tabs horizontal scroll ONLY */
     .tabList{
       flex-direction: row;
       flex-wrap: nowrap;
@@ -377,12 +375,11 @@ const css = `
     }
     .tabList::-webkit-scrollbar{ height: 0; }
 
-    /* ✅ smaller buttons + show 3-4 at one time */
     .tabBtn{
       width: auto;
-      min-width: 20vw;     /* ✅ 3-4 visible */
+      min-width: 20vw;
       max-width: 44vw;
-      padding: 9px 10px;   /* ✅ smaller */
+      padding: 9px 10px;
       border-radius: 16px;
       font-size: 12px;
     }

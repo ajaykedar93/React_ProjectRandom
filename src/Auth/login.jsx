@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext"; // ✅ correct path
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ context login
 
-  // ✅ better: use env in Vercel. fallback is your render api.
+  // ✅ env first, fallback api
   const API_BASE =
     import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isAdmin, setIsAdmin] = useState(false); // ✅ toggle
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [modal, setModal] = useState({
     open: false,
@@ -24,14 +26,11 @@ export default function Login() {
     setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
-  // ✅ ESC close modal
+  // ESC closes modal
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") closeModal();
-    };
+    const onKey = (e) => e.key === "Escape" && closeModal();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => {
@@ -72,7 +71,7 @@ export default function Login() {
     } catch {}
 
     if (!res.ok) {
-      throw new Error(data?.message || text || `Request failed (HTTP ${res.status})`);
+      throw new Error(data?.message || text || `HTTP ${res.status}`);
     }
     return data || {};
   }
@@ -84,7 +83,6 @@ export default function Login() {
     try {
       setLoading(true);
 
-      // ✅ USER vs ADMIN endpoint
       const endpoint = isAdmin ? "/api/auth/admin-login" : "/api/auth/login";
 
       const data = await apiPost(endpoint, {
@@ -92,8 +90,8 @@ export default function Login() {
         password: form.password,
       });
 
-      // ✅ Save user (admin returns {role:"admin"} ideally)
-      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      // ✅ SAVE USER IN CONTEXT
+      login(data.user);
 
       openModal(
         "success",
@@ -101,7 +99,6 @@ export default function Login() {
         data?.message || "Logged in successfully ✅"
       );
 
-      // ✅ Redirect: Admin -> AdminDashboard, User -> Dashboard
       setTimeout(() => {
         if (isAdmin) navigate("/admin/dashboard", { replace: true });
         else navigate("/dashboard", { replace: true });
@@ -122,31 +119,24 @@ export default function Login() {
       <style>{css}</style>
       <div className="bg" />
 
-      {/* ✅ Center Modal */}
-      {modal.open ? (
-        <div className="mb" onClick={closeModal} role="dialog" aria-modal="true">
+      {/* Modal */}
+      {modal.open && (
+        <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
             <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
-
             <h3 className="mt">{modal.title}</h3>
             <p className="mm">{modal.message}</p>
-
-            <div className="mActions">
-              <button className="mBtn" type="button" onClick={closeModal}>
-                OK
-              </button>
-            </div>
-
+            <button className="mBtn" onClick={closeModal}>
+              OK
+            </button>
             <div className="mHint">Press ESC to close</div>
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="wrap">
-        <div className="devline" aria-label="developer-credit">
-          <span className="codeIcon" aria-hidden="true">
-            {"</>"}
-          </span>
+        <div className="devline">
+          <span className="codeIcon">{"</>"}</span>
           <span className="devText">Develop by Ajay Kedar</span>
         </div>
 
@@ -154,24 +144,22 @@ export default function Login() {
           <div className="head">
             <h2 className="title">{isAdmin ? "Admin Login" : "Login"}</h2>
             <p className="sub">
-              {isAdmin ? "Admin access • Secure Sign-in" : "Welcome back • Secure Sign-in"}
+              {isAdmin
+                ? "Admin access • Secure Sign-in"
+                : "Welcome back • Secure Sign-in"}
             </p>
           </div>
 
-          {/* ✅ Toggle */}
-          <div className="modeRow" aria-label="login-mode-toggle">
+          {/* Toggle */}
+          <div className="modeRow">
             <span className={`modeTag ${!isAdmin ? "on" : ""}`}>User</span>
-
             <button
               type="button"
               className={`toggle ${isAdmin ? "on" : ""}`}
               onClick={() => setIsAdmin((p) => !p)}
-              aria-pressed={isAdmin}
-              title={isAdmin ? "Switch to User Login" : "Switch to Admin Login"}
             >
               <span className="knob" />
             </button>
-
             <span className={`modeTag ${isAdmin ? "on" : ""}`}>Admin</span>
           </div>
 
@@ -184,10 +172,8 @@ export default function Login() {
               name="username"
               value={form.username}
               onChange={handleChange}
-              placeholder={isAdmin ? "Enter admin email" : "Enter email or mobile number"}
-              autoComplete="username"
             />
-            {errors.username ? <div className="eTxt">{errors.username}</div> : null}
+            {errors.username && <div className="eTxt">{errors.username}</div>}
           </div>
 
           <div className="field">
@@ -200,10 +186,8 @@ export default function Login() {
               type="password"
               value={form.password}
               onChange={handleChange}
-              placeholder="Enter password"
-              autoComplete="current-password"
             />
-            {errors.password ? <div className="eTxt">{errors.password}</div> : null}
+            {errors.password && <div className="eTxt">{errors.password}</div>}
           </div>
 
           <button type="submit" className="submit" disabled={loading}>
@@ -213,18 +197,12 @@ export default function Login() {
           <div className="links">
             {!isAdmin ? (
               <>
-                <Link className="link" to="/register">
-                  Create account (Register)
-                </Link>
+                <Link className="link" to="/register">Register</Link>
                 <span className="dot">•</span>
-                <Link className="link" to="/forgot">
-                  Forgot Password?
-                </Link>
+                <Link className="link" to="/forgot">Forgot Password?</Link>
               </>
             ) : (
-              <>
-                <span className="dot">Admin mode enabled</span>
-              </>
+              <span className="dot">Admin mode enabled</span>
             )}
           </div>
         </form>
@@ -288,11 +266,11 @@ const css = `
 
   .card{
     width:100%;
-    background:var(--card);
+    background:rgba(255,255,255,.90);
     border:1px solid rgba(255,255,255,.55);
     border-radius:22px;
     padding:26px;
-    box-shadow:var(--shadow);
+    box-shadow: 0 26px 80px rgba(0,0,0,.18);
     backdrop-filter: blur(14px);
     box-sizing:border-box;
   }

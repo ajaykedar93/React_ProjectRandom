@@ -1,41 +1,96 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-/* Auth pages */
+/* ================== AUTH PAGES ================== */
 import Register from "./Auth/register";
 import Login from "./Auth/login";
 import Forgot from "./Auth/forgot";
 
-/* Dashboard layout */
+/* ================== DASHBOARD LAYOUT ================== */
 import Dashboard from "./Pages/dashboard";
 
-/* Dashboard pages */
+/* ================== DASHBOARD PAGES ================== */
 import DashboardHome from "./Pages/DashboardHome";
 import DocumentUpload from "./Pages/document";
 import DocumentGet from "./Pages/documentget";
-
-/* Text document pages */
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
 
-/* ✅ Admin */
+/* ================== ADMIN ================== */
 import AdminDashboard from "./Pages/Admindashboard";
+import UserAll from "./Pages/UserAll.jsx";
+import SettingAll from "./Pages/SettingAll.jsx";
+
+/* ================== AUTH CONTEXT ================== */
+import { useAuth } from "./contexts/AuthContext.jsx";
+
+/* ================== PROTECTED ROUTES ================== */
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  // ✅ user role check
+  if (user?.role !== "admin") return <Navigate to="/dashboard" replace />;
+
+  return children;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
-        {/* Auth */}
-        <Route path="/register" element={<Register />} />
+        {/* ================== AUTH ================== */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot" element={<Forgot />} />
 
-        {/* ✅ Admin Dashboard */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        {/* ================== ADMIN ================== */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
 
-        {/* Dashboard */}
-        <Route path="/dashboard" element={<Dashboard />}>
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <UserAll />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminRoute>
+              <SettingAll />
+            </AdminRoute>
+          }
+        />
+
+        {/* ================== USER DASHBOARD ================== */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardHome />} />
           <Route path="document" element={<DocumentUpload />} />
           <Route path="documentget" element={<DocumentGet />} />
@@ -43,7 +98,8 @@ export default function App() {
           <Route path="gettextdoc" element={<Gettextdoc />} />
         </Route>
 
-        {/* Catch all */}
+        {/* ================== DEFAULT / FALLBACK ================== */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

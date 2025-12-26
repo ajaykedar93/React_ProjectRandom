@@ -9,9 +9,38 @@ export default function DocumentGet() {
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
 
-  const [modal, setModal] = useState({ open: false, type: "info", title: "", message: "" });
-  const openModal = (type, title, message) => setModal({ open: true, type, title, message });
-  const closeModal = () => setModal((p) => ({ ...p, open: false }));
+  // Center modal (alert/confirm)
+  const [modal, setModal] = useState({
+    open: false,
+    type: "info", // info | success | error | confirm
+    title: "",
+    message: "",
+    onConfirm: null,
+    confirmText: "Yes",
+    cancelText: "Cancel",
+  });
+
+  const openModal = (cfg) =>
+    setModal({
+      open: true,
+      type: cfg.type || "info",
+      title: cfg.title || "",
+      message: cfg.message || "",
+      onConfirm: cfg.onConfirm || null,
+      confirmText: cfg.confirmText || "Yes",
+      cancelText: cfg.cancelText || "Cancel",
+    });
+
+  const closeModal = () => setModal((p) => ({ ...p, open: false, onConfirm: null }));
+
+  // Edit modal
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editFile, setEditFile] = useState(null);
 
   const prettySize = useMemo(
     () => (bytes) => {
@@ -60,9 +89,7 @@ export default function DocumentGet() {
       if (["csv"].includes(e)) return { emoji: "🧾", label: "CSV" };
       if (["txt"].includes(e)) return { emoji: "📄", label: "TEXT" };
       if (
-        ["js", "ts", "jsx", "tsx", "json", "html", "css", "py", "java", "c", "cpp", "php", "go", "rs"].includes(
-          e
-        )
+        ["js", "ts", "jsx", "tsx", "json", "html", "css", "py", "java", "c", "cpp", "php", "go", "rs"].includes(e)
       )
         return { emoji: "💻", label: "CODE" };
       if (["zip", "rar", "7z"].includes(e)) return { emoji: "🗜️", label: "ZIP" };
@@ -97,7 +124,7 @@ export default function DocumentGet() {
       if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
       setDocs(Array.isArray(data) ? data : []);
     } catch (e) {
-      openModal("error", "Load Failed", e.message || "Server error");
+      openModal({ type: "error", title: "Load Failed", message: e.message || "Server error" });
     } finally {
       setLoading(false);
     }
@@ -119,20 +146,180 @@ export default function DocumentGet() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  // ✅ Open edit modal (same page)
+  const openEdit = (doc) => {
+    setSelectedDoc(doc);
+    setEditTitle(doc.document_title || "");
+    setEditDesc(doc.short_desc || "");
+    setEditFile(null);
+    setEditOpen(true);
+  };
+
+  const closeEdit = () => {
+    if (editLoading) return;
+    setEditOpen(false);
+    setSelectedDoc(null);
+    setEditFile(null);
+  };
+
+  // ✅ UPDATE (multipart/form-data)
+  const submitUpdate = async (e) => {
+    e.preventDefault();
+    if (!selectedDoc?.id) return;
+
+    try {
+      setEditLoading(true);
+
+      const fd = new FormData();
+      // backend: document_title optional, short_desc optional, file optional
+      // but title usually should not be empty if user changed it
+      if (editTitle.trim()) fd.append("document_title", editTitle.trim());
+      // allow empty desc -> send empty string (backend will COALESCE; empty string will set empty)
+      fd.append("short_desc", editDesc ?? "");
+      if (editFile) fd.append("file", editFile);
+
+      const res = await fetch(`${API_BASE}/api/documents/${selectedDoc.id}`, {
+        method: "PUT",
+        body: fd,
+      });
+
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch {}
+
+      if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
+
+      setEditOpen(false);
+      setSelectedDoc(null);
+      setEditFile(null);
+
+      openModal({ type: "success", title: "Updated", message: data?.message || "Updated successfully" });
+      await fetchDocs();
+    } catch (e2) {
+      openModal({ type: "error", title: "Update Failed", message: e2.message || "Server error" });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // ✅ DELETE confirm + delete same page
+  const askDelete = (doc) => {
+    openModal({
+      type: "confirm",
+      title: "Delete Document?",
+      message: `Are you sure you want to delete "${doc.document_title}"?\nThis cannot be undone.`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        closeModal();
+        await doDelete(doc.id);
+      },
+    });
+  };
+
+  const doDelete = async (id) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/api/documents/${id}`, { method: "DELETE" });
+
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch {}
+
+      if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
+
+      openModal({ type: "success", title: "Deleted", message: data?.message || "Deleted successfully" });
+      await fetchDocs();
+    } catch (e) {
+      openModal({ type: "error", title: "Delete Failed", message: e.message || "Server error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="dg">
       <style>{css}</style>
       <div className="bg" />
 
+      {/* ✅ CENTER MODAL (alert + confirm) */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
             <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
             <h3 className="mt">{modal.title}</h3>
-            <p className="mm">{modal.message}</p>
-            <button className="mBtn" type="button" onClick={closeModal}>
-              OK
-            </button>
+            <p className="mm" style={{ whiteSpace: "pre-line" }}>
+              {modal.message}
+            </p>
+
+            {modal.type === "confirm" ? (
+              <div className="mRow">
+                <button className="mBtn ghost" type="button" onClick={closeModal}>
+                  {modal.cancelText}
+                </button>
+                <button
+                  className="mBtn danger"
+                  type="button"
+                  onClick={() => modal.onConfirm && modal.onConfirm()}
+                >
+                  {modal.confirmText}
+                </button>
+              </div>
+            ) : (
+              <button className="mBtn" type="button" onClick={closeModal}>
+                OK
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ✅ EDIT MODAL (center) */}
+      {editOpen ? (
+        <div className="mb" onClick={closeEdit}>
+          <div className="mc" onClick={(e) => e.stopPropagation()}>
+            <div className="pill info">EDIT</div>
+            <h3 className="mt">Update Document</h3>
+
+            <form onSubmit={submitUpdate} className="form">
+              <label className="lbl">Title</label>
+              <input
+                className="inp"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Enter document title"
+                required
+              />
+
+              <label className="lbl">Short Description</label>
+              <textarea
+                className="ta"
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Enter short description (optional)"
+                rows={3}
+              />
+
+              <label className="lbl">Replace File (optional)</label>
+              <input
+                className="inp"
+                type="file"
+                onChange={(e) => setEditFile(e.target.files?.[0] || null)}
+              />
+
+              <div className="mRow" style={{ marginTop: 12 }}>
+                <button className="mBtn ghost" type="button" onClick={closeEdit} disabled={editLoading}>
+                  Cancel
+                </button>
+                <button className="mBtn" type="submit" disabled={editLoading}>
+                  {editLoading ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
@@ -141,16 +328,11 @@ export default function DocumentGet() {
         <div className="head">
           <div className="hleft">
             <h2 className="title">Uploaded Documents</h2>
-            <p className="sub">Search • View • Download (any file type)</p>
+            <p className="sub">Search • View • Download • Update • Delete</p>
           </div>
 
           <div className="actions">
-            <input
-              className="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search title..."
-            />
+            <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title..." />
             <button className="btn2" type="button" onClick={fetchDocs} disabled={loading}>
               {loading ? "Loading..." : "Search"}
             </button>
@@ -189,11 +371,7 @@ export default function DocumentGet() {
 
                       <div className="titleBox">
                         <div className="t1">{d.document_title}</div>
-                        {d.short_desc ? (
-                          <div className="t2">{d.short_desc}</div>
-                        ) : (
-                          <div className="t2 muted">No description</div>
-                        )}
+                        {d.short_desc ? <div className="t2">{d.short_desc}</div> : <div className="t2 muted">No description</div>}
                       </div>
                     </div>
 
@@ -210,15 +388,23 @@ export default function DocumentGet() {
                         type="button"
                         onClick={() => onView(d)}
                         disabled={!previewable}
-                        title={
-                          previewable ? "Preview in new tab" : "Preview not supported for this file type"
-                        }
+                        title={previewable ? "Preview in new tab" : "Preview not supported for this file type"}
                       >
                         View
                       </button>
 
                       <button className="down" type="button" onClick={() => onDownload(d)}>
                         Download
+                      </button>
+
+                      {/* ✅ NEW: Update */}
+                      <button className="edit" type="button" onClick={() => openEdit(d)}>
+                        Update
+                      </button>
+
+                      {/* ✅ NEW: Delete */}
+                      <button className="del" type="button" onClick={() => askDelete(d)}>
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -246,7 +432,6 @@ const css = `
     --shadow: 0 26px 80px rgba(0,0,0,.18);
   }
 
-  /* ✅ Default desktop/tablet (same as your design) */
   .dg{
     min-height:100vh;
     width:100%;
@@ -512,6 +697,28 @@ const css = `
     white-space: nowrap;
   }
 
+  .edit{
+    border:none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    cursor:pointer;
+    font-weight: 1000;
+    background: rgba(6,182,212,.14);
+    color: rgba(11,18,32,.92);
+    white-space: nowrap;
+  }
+
+  .del{
+    border:none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    cursor:pointer;
+    font-weight: 1000;
+    background: rgba(255,45,85,.14);
+    color: #9f1239;
+    white-space: nowrap;
+  }
+
   .links{
     margin-top: 14px;
     display:flex;
@@ -531,7 +738,7 @@ const css = `
 
   @keyframes fadeIn{ from{ opacity:0; transform: translateY(6px);} to{ opacity:1; transform: translateY(0);} }
 
-  /* Modal */
+  /* ✅ MODALS CENTER */
   .mb{
     position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
@@ -542,12 +749,12 @@ const css = `
   }
   .mc{
     width:100%;
-    max-width: 460px;
+    max-width: 520px;
     background: rgba(255,255,255,.92);
     border: 1px solid rgba(255,255,255,.60);
     border-radius: 24px;
     padding: 18px;
-    text-align:center;
+    text-align:left;
     box-shadow: 0 35px 95px rgba(0,0,0,.28);
     backdrop-filter: blur(14px);
   }
@@ -565,10 +772,14 @@ const css = `
   .pill.success{ background: rgba(34,197,94,.14); color:#0f5132; }
   .pill.error{ background: rgba(255,45,85,.12); color:#9f1239; }
   .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
+  .pill.confirm{ background: rgba(255,193,7,.14); color:#7c2d12; }
+
   .mt{ margin:4px 0 6px; font-weight:1100; color:var(--txt); font-size:18px; }
   .mm{ margin:0 0 14px; color: rgba(11,18,32,.78); font-weight:900; line-height:1.4; }
+
+  .mRow{ display:flex; gap:10px; justify-content:flex-end; }
   .mBtn{
-    width:100%;
+    flex:1;
     border:none;
     padding:12px 14px;
     border-radius:16px;
@@ -576,50 +787,57 @@ const css = `
     color:#fff;
     font-weight:1100;
     cursor:pointer;
+    text-align:center;
+  }
+  .mBtn.ghost{
+    background: rgba(17,24,39,.08);
+    color:#111827;
+  }
+  .mBtn.danger{
+    background: linear-gradient(90deg, #9f1239 0%, #ef4444 100%);
   }
 
-  /* ✅ MOBILE EDGE-TO-EDGE FIX */
+  /* Edit form */
+  .form{ margin-top: 10px; }
+  .lbl{
+    display:block;
+    font-weight:1000;
+    color: rgba(11,18,32,.85);
+    margin: 10px 0 6px;
+    font-size: 13px;
+  }
+  .inp{
+    width:100%;
+    padding: 12px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(17,24,39,.10);
+    outline:none;
+    font-weight: 900;
+    background: rgba(255,255,255,.75);
+    box-sizing:border-box;
+  }
+  .ta{
+    width:100%;
+    padding: 12px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(17,24,39,.10);
+    outline:none;
+    font-weight: 900;
+    background: rgba(255,255,255,.75);
+    box-sizing:border-box;
+    resize: vertical;
+  }
+
   @media (max-width: 720px){
-    .dg{
-      padding: 0;                 /* ✅ remove outside space */
-      justify-content: flex-start; /* ✅ no center gap */
-      align-items: stretch;
-      min-height: 100vh;
-    }
-
+    .dg{ padding: 0; justify-content:flex-start; align-items:stretch; min-height:100vh; }
     .card{
-      max-width: none;
-      width: 100%;
-      border-radius: 0;           /* ✅ touch edges */
-      border-left: 0;
-      border-right: 0;
-      padding: 14px 12px;         /* ✅ only inner padding */
-      box-shadow: none;           /* ✅ remove floating shadow */
+      max-width:none; width:100%;
+      border-radius:0; border-left:0; border-right:0;
+      padding: 14px 12px; box-shadow:none;
     }
-
     .actions{ width:100%; justify-content:stretch; }
     .search, .btn2, .btnGhost{ width:100%; }
-
-    .iconBox{ width: 64px; border-radius: 16px; padding: 8px 6px; }
-    .emoji{ font-size: 18px; }
-    .tag{ font-size: 10px; padding: 3px 7px; }
-
-    .t1{ font-size: 13px; }
-    .t2{ font-size: 12px; }
-    .chip{ font-size: 10px; padding: 6px 8px; }
-
-    .btnRow{
-      justify-content:flex-start;
-      gap: 8px;
-    }
-    .view, .down{
-      padding: 9px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      flex: 0 0 auto;
-    }
-
-    /* Modal should still have padding */
+    .btnRow{ justify-content:flex-start; }
     .mb{ padding: 16px; }
     .mc{ border-radius: 20px; }
   }
