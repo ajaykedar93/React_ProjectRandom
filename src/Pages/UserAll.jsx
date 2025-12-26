@@ -50,6 +50,7 @@ export default function UserAll() {
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editId, setEditId] = useState(null);
+
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -95,7 +96,7 @@ export default function UserAll() {
     });
   }, [users, q]);
 
-  // ✅ Safe fetch helper (no crash if response not JSON)
+  // ✅ Safe fetch helper (no crash if response not JSON) :contentReference[oaicite:2]{index=2}
   const safeFetchJson = async (url, options = {}, controller) => {
     const res = await fetch(url, {
       mode: "cors",
@@ -123,7 +124,7 @@ export default function UserAll() {
     try {
       if (!silent) setLoading(true);
 
-      const data = await safeFetchJson(`${USERS_BASE}`, { method: "GET" }, controller); // GET /users :contentReference[oaicite:2]{index=2}
+      const data = await safeFetchJson(`${USERS_BASE}`, { method: "GET" }, controller); // :contentReference[oaicite:3]{index=3}
       if (!aliveRef.current) return;
 
       setUsers(Array.isArray(data) ? data : []);
@@ -144,7 +145,6 @@ export default function UserAll() {
     return () => controller.abort();
   };
 
-  // first load + cleanup
   useEffect(() => {
     aliveRef.current = true;
     fetchUsers(false);
@@ -154,7 +154,6 @@ export default function UserAll() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // auto refresh every 5s
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(() => fetchUsers(true), 5000);
@@ -190,7 +189,7 @@ export default function UserAll() {
       setDetailLoading(true);
       setDetailUser(null);
 
-      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "GET" }, controller); // GET /users/:id :contentReference[oaicite:3]{index=3}
+      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "GET" }, controller); // :contentReference[oaicite:4]{index=4}
       if (!aliveRef.current) return;
 
       setDetailUser(data);
@@ -211,7 +210,6 @@ export default function UserAll() {
       setEditLoading(false);
       setEditId(id);
 
-      // load latest before edit
       const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "GET" }, controller);
       if (!aliveRef.current) return;
 
@@ -259,7 +257,7 @@ export default function UserAll() {
       const data = await safeFetchJson(
         `${USERS_BASE}/${editId}`,
         {
-          method: "PUT", // PUT /users/:id :contentReference[oaicite:4]{index=4}
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
@@ -273,7 +271,6 @@ export default function UserAll() {
 
       await fetchUsers(true);
 
-      // refresh details if open
       if (detailOpen && detailUser?.id === editId) {
         await openDetails(editId);
       }
@@ -304,7 +301,7 @@ export default function UserAll() {
     try {
       setLoading(true);
 
-      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "DELETE" }, controller); // DELETE /users/:id :contentReference[oaicite:5]{index=5}
+      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "DELETE" }, controller);
 
       openModal({ type: "success", title: "Deleted", message: data?.message || "Deleted successfully" });
 
@@ -322,114 +319,146 @@ export default function UserAll() {
     return () => controller.abort();
   };
 
+  // ✅ modal close helpers (prevent invisible close)
+  const closeDetails = () => {
+    if (detailLoading) return;
+    setDetailOpen(false);
+  };
+  const closeEdit = () => {
+    if (editLoading) return;
+    setEditOpen(false);
+  };
+
   return (
     <div className="ua">
       <style>{css}</style>
 
-      {/* Center Modal */}
+      {/* Safe spaces for page */}
+      <div className="safeTop" />
+
+      {/* Center Modal (alerts/confirms) */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
             <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
             <h3 className="mt">{modal.title}</h3>
-            <p className="mm" style={{ whiteSpace: "pre-line" }}>
-              {modal.message}
-            </p>
 
-            {modal.type === "confirm" ? (
-              <div className="mRow">
-                <button className="mBtn ghost" type="button" onClick={closeModal}>
-                  {modal.cancelText}
+            <div className="mBody">
+              <p className="mm" style={{ whiteSpace: "pre-line" }}>
+                {modal.message}
+              </p>
+            </div>
+
+            <div className="mActions">
+              {modal.type === "confirm" ? (
+                <div className="mRow">
+                  <button className="mBtn ghost" type="button" onClick={closeModal}>
+                    {modal.cancelText}
+                  </button>
+                  <button className="mBtn danger" type="button" onClick={() => modal.onConfirm && modal.onConfirm()}>
+                    {modal.confirmText}
+                  </button>
+                </div>
+              ) : (
+                <button className="mBtn" type="button" onClick={closeModal}>
+                  {modal.confirmText || "OK"}
                 </button>
-                <button className="mBtn danger" type="button" onClick={() => modal.onConfirm && modal.onConfirm()}>
-                  {modal.confirmText}
-                </button>
-              </div>
-            ) : (
-              <button className="mBtn" type="button" onClick={closeModal}>
-                {modal.confirmText || "OK"}
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       ) : null}
 
       {/* Details Modal */}
       {detailOpen ? (
-        <div className="mb" onClick={() => !detailLoading && setDetailOpen(false)}>
+        <div className="mb" onClick={closeDetails}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className="pill info">DETAILS</div>
-            <h3 className="mt">User Details</h3>
-
-            {detailLoading ? (
-              <div className="loadingRow">
-                <div className="spin" /> Loading...
+            <div className="mHeader">
+              <div>
+                <div className="pill info">DETAILS</div>
+                <h3 className="mt">User Details</h3>
               </div>
-            ) : !detailUser ? (
-              <div className="emptyBox">No details</div>
-            ) : (
-              <div className="detailGrid">
-                <div className="kv">
-                  <span>ID</span>
-                  <b>{safeText(detailUser.id)}</b>
-                </div>
-                <div className="kv">
-                  <span>Full Name</span>
-                  <b>{safeText(detailUser.full_name)}</b>
-                </div>
-                <div className="kv">
-                  <span>Email</span>
-                  <b>{safeText(detailUser.email_address)}</b>
-                </div>
-                <div className="kv">
-                  <span>Mobile</span>
-                  <b>{safeText(detailUser.mobile_number)}</b>
-                </div>
 
-                <div className="kv">
-                  <span>Village/City</span>
-                  <b>{safeText(detailUser.village_city)}</b>
-                </div>
-                <div className="kv">
-                  <span>Pincode</span>
-                  <b>{safeText(detailUser.pincode)}</b>
-                </div>
-
-                <div className="kv">
-                  <span>State</span>
-                  <b>{safeText(detailUser.state)}</b>
-                </div>
-                <div className="kv">
-                  <span>District</span>
-                  <b>{safeText(detailUser.district)}</b>
-                </div>
-
-                <div className="kv">
-                  <span>Taluka</span>
-                  <b>{safeText(detailUser.taluka)}</b>
-                </div>
-
-                <div className="kv full">
-                  <span>Created At</span>
-                  <b>{formatIndia(detailUser.created_at)}</b>
-                </div>
-              </div>
-            )}
-
-            <div className="mRow" style={{ marginTop: 12 }}>
-              {detailUser ? (
-                <>
-                  <button className="mBtn ghost" type="button" onClick={() => openEdit(detailUser.id)} disabled={detailLoading}>
-                    Update
-                  </button>
-                  <button className="mBtn danger" type="button" onClick={() => askDelete(detailUser)} disabled={detailLoading}>
-                    Delete
-                  </button>
-                </>
-              ) : null}
-              <button className="mBtn" type="button" onClick={() => setDetailOpen(false)} disabled={detailLoading}>
-                Close
+              {/* ✅ always visible close button */}
+              <button className="xBtn" type="button" onClick={closeDetails} aria-label="Close details">
+                ✕
               </button>
+            </div>
+
+            <div className="mBody">
+              {detailLoading ? (
+                <div className="loadingRow">
+                  <div className="spin" /> Loading...
+                </div>
+              ) : !detailUser ? (
+                <div className="emptyBox">No details</div>
+              ) : (
+                <div className="detailGrid">
+                  <div className="kv">
+                    <span>ID</span>
+                    <b>{safeText(detailUser.id)}</b>
+                  </div>
+                  <div className="kv">
+                    <span>Full Name</span>
+                    <b>{safeText(detailUser.full_name)}</b>
+                  </div>
+                  <div className="kv">
+                    <span>Email</span>
+                    <b>{safeText(detailUser.email_address)}</b>
+                  </div>
+                  <div className="kv">
+                    <span>Mobile</span>
+                    <b>{safeText(detailUser.mobile_number)}</b>
+                  </div>
+
+                  <div className="kv">
+                    <span>Village/City</span>
+                    <b>{safeText(detailUser.village_city)}</b>
+                  </div>
+                  <div className="kv">
+                    <span>Pincode</span>
+                    <b>{safeText(detailUser.pincode)}</b>
+                  </div>
+
+                  <div className="kv">
+                    <span>State</span>
+                    <b>{safeText(detailUser.state)}</b>
+                  </div>
+                  <div className="kv">
+                    <span>District</span>
+                    <b>{safeText(detailUser.district)}</b>
+                  </div>
+
+                  <div className="kv">
+                    <span>Taluka</span>
+                    <b>{safeText(detailUser.taluka)}</b>
+                  </div>
+
+                  <div className="kv full">
+                    <span>Created At</span>
+                    <b>{formatIndia(detailUser.created_at)}</b>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ✅ sticky actions (never hidden on mobile) */}
+            <div className="mActions">
+              <div className="mRow">
+                {detailUser ? (
+                  <>
+                    <button className="mBtn ghost" type="button" onClick={() => openEdit(detailUser.id)} disabled={detailLoading}>
+                      Update
+                    </button>
+                    <button className="mBtn danger" type="button" onClick={() => askDelete(detailUser)} disabled={detailLoading}>
+                      Delete
+                    </button>
+                  </>
+                ) : null}
+                <button className="mBtn" type="button" onClick={closeDetails} disabled={detailLoading}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -437,102 +466,131 @@ export default function UserAll() {
 
       {/* Edit Modal */}
       {editOpen ? (
-        <div className="mb" onClick={() => !editLoading && setEditOpen(false)}>
+        <div className="mb" onClick={closeEdit}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className="pill info">UPDATE</div>
-            <h3 className="mt">Update User</h3>
+            <div className="mHeader">
+              <div>
+                <div className="pill info">UPDATE</div>
+                <h3 className="mt">Update User</h3>
+              </div>
+
+              <button className="xBtn" type="button" onClick={closeEdit} aria-label="Close update">
+                ✕
+              </button>
+            </div>
 
             <form onSubmit={submitUpdate} className="form">
-              <div className="row2">
-                <div>
-                  <label className="lbl">First Name</label>
-                  <input
-                    className="inp"
-                    value={form.first_name}
-                    onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))}
-                    required
-                  />
+              <div className="mBody">
+                <div className="row2">
+                  <div>
+                    <label className="lbl">First Name</label>
+                    <input
+                      className="inp"
+                      value={form.first_name}
+                      onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">Last Name</label>
+                    <input
+                      className="inp"
+                      value={form.last_name}
+                      onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="lbl">Last Name</label>
-                  <input
-                    className="inp"
-                    value={form.last_name}
-                    onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
-                    required
-                  />
+
+                <div className="row2">
+                  <div>
+                    <label className="lbl">Mobile</label>
+                    <input
+                      className="inp"
+                      value={form.mobile_number}
+                      onChange={(e) => setForm((p) => ({ ...p, mobile_number: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">Email</label>
+                    <input
+                      className="inp"
+                      value={form.email_address}
+                      onChange={(e) => setForm((p) => ({ ...p, email_address: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="row2">
+                  <div>
+                    <label className="lbl">Village/City</label>
+                    <input
+                      className="inp"
+                      value={form.village_city}
+                      onChange={(e) => setForm((p) => ({ ...p, village_city: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">Pincode</label>
+                    <input
+                      className="inp"
+                      value={form.pincode}
+                      onChange={(e) => setForm((p) => ({ ...p, pincode: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="row2">
+                  <div>
+                    <label className="lbl">State</label>
+                    <input
+                      className="inp"
+                      value={form.state}
+                      onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">District</label>
+                    <input
+                      className="inp"
+                      value={form.district}
+                      onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="row2">
+                  <div>
+                    <label className="lbl">Taluka</label>
+                    <input
+                      className="inp"
+                      value={form.taluka}
+                      onChange={(e) => setForm((p) => ({ ...p, taluka: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="lbl">New Password (optional)</label>
+                    <input
+                      className="inp"
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                      placeholder="Leave blank to keep same"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="row2">
-                <div>
-                  <label className="lbl">Mobile</label>
-                  <input
-                    className="inp"
-                    value={form.mobile_number}
-                    onChange={(e) => setForm((p) => ({ ...p, mobile_number: e.target.value }))}
-                  />
+              {/* ✅ sticky actions */}
+              <div className="mActions">
+                <div className="mRow">
+                  <button className="mBtn ghost" type="button" onClick={closeEdit} disabled={editLoading}>
+                    Cancel
+                  </button>
+                  <button className="mBtn" type="submit" disabled={editLoading}>
+                    {editLoading ? "Updating..." : "Update"}
+                  </button>
                 </div>
-                <div>
-                  <label className="lbl">Email</label>
-                  <input
-                    className="inp"
-                    value={form.email_address}
-                    onChange={(e) => setForm((p) => ({ ...p, email_address: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="row2">
-                <div>
-                  <label className="lbl">Village/City</label>
-                  <input
-                    className="inp"
-                    value={form.village_city}
-                    onChange={(e) => setForm((p) => ({ ...p, village_city: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="lbl">Pincode</label>
-                  <input className="inp" value={form.pincode} onChange={(e) => setForm((p) => ({ ...p, pincode: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="row2">
-                <div>
-                  <label className="lbl">State</label>
-                  <input className="inp" value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="lbl">District</label>
-                  <input className="inp" value={form.district} onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="row2">
-                <div>
-                  <label className="lbl">Taluka</label>
-                  <input className="inp" value={form.taluka} onChange={(e) => setForm((p) => ({ ...p, taluka: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="lbl">New Password (optional)</label>
-                  <input
-                    className="inp"
-                    type="password"
-                    value={form.password}
-                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                    placeholder="Leave blank to keep same"
-                  />
-                </div>
-              </div>
-
-              <div className="mRow" style={{ marginTop: 12 }}>
-                <button className="mBtn ghost" type="button" onClick={() => setEditOpen(false)} disabled={editLoading}>
-                  Cancel
-                </button>
-                <button className="mBtn" type="submit" disabled={editLoading}>
-                  {editLoading ? "Updating..." : "Update"}
-                </button>
               </div>
             </form>
           </div>
@@ -552,15 +610,12 @@ export default function UserAll() {
 
           <div className="topActions">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name/email/mobile..." />
-
             <button className="btn" type="button" onClick={() => fetchUsers(false)} disabled={loading}>
               {loading ? "Loading..." : "Refresh"}
             </button>
-
             <button className={`btnGhost ${autoRefresh ? "on" : ""}`} type="button" onClick={() => setAutoRefresh((p) => !p)}>
               Auto: {autoRefresh ? "ON" : "OFF"}
             </button>
-
             <button className="btnDanger" type="button" onClick={logoutAdmin}>
               Logout
             </button>
@@ -610,8 +665,12 @@ export default function UserAll() {
           )}
         </div>
 
-        <div className="bottomNote">API used: <b>{USERS_BASE}</b></div>
+        <div className="bottomNote">
+          API: <b>{USERS_BASE}</b>
+        </div>
       </div>
+
+      <div className="safeBottom" />
     </div>
   );
 }
@@ -620,9 +679,13 @@ const css = `
   :root{ --ink:#0b1220; --muted: rgba(11,18,32,.65); --shadow: 0 28px 90px rgba(0,0,0,.16); }
   *{ box-sizing: border-box; }
 
+  /* ✅ Page safe top/bottom for mobile notch */
+  .safeTop{ height: calc(env(safe-area-inset-top, 0px) + 8px); }
+  .safeBottom{ height: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+
   .ua{
     min-height:100vh;
-    padding: 18px;
+    padding: 12px;
     background:
       radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .22), transparent 60%),
       radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .18), transparent 58%),
@@ -647,17 +710,32 @@ const css = `
   .sub{ margin: 8px 0 0; font-weight: 850; color: var(--muted); font-size: 13px; }
   .sync{ color: rgba(11,18,32,.55); }
 
-  .topActions{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; justify-content:flex-end; width: min(640px, 100%); }
+  .topActions{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items:center;
+    justify-content:flex-end;
+    width: min(640px, 100%);
+  }
   .search{
-    flex: 1 1 260px; min-width: 200px;
-    padding: 12px 12px; border-radius: 16px;
+    flex: 1 1 260px;
+    min-width: 200px;
+    padding: 12px 12px;
+    border-radius: 16px;
     border: 1px solid rgba(17,24,39,.10);
-    outline:none; font-weight: 900; background: rgba(255,255,255,.70);
+    outline:none;
+    font-weight: 900;
+    background: rgba(255,255,255,.70);
   }
 
   .btn{
-    border:none; padding: 12px 14px; border-radius: 16px; cursor:pointer;
-    color:#fff; font-weight:1000;
+    border:none;
+    padding: 12px 14px;
+    border-radius: 16px;
+    cursor:pointer;
+    color:#fff;
+    font-weight:1000;
     background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 55%, #22c55e 100%);
     box-shadow: 0 14px 30px rgba(124,58,237,.16);
     white-space: nowrap;
@@ -666,22 +744,35 @@ const css = `
 
   .btnGhost{
     border: 1px solid rgba(11,18,32,.12);
-    padding: 12px 14px; border-radius: 16px; cursor:pointer; font-weight: 1000;
-    background: rgba(255,255,255,.62); white-space: nowrap;
+    padding: 12px 14px;
+    border-radius: 16px;
+    cursor:pointer;
+    font-weight: 1000;
+    background: rgba(255,255,255,.62);
+    white-space: nowrap;
   }
   .btnGhost.on{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.25); }
 
   .btnDanger{
-    border:none; padding: 12px 14px; border-radius: 16px; cursor:pointer;
-    font-weight: 1000; color:#fff;
+    border:none;
+    padding: 12px 14px;
+    border-radius: 16px;
+    cursor:pointer;
+    font-weight: 1000;
+    color:#fff;
     background: linear-gradient(90deg, #9f1239 0%, #ef4444 100%);
     white-space: nowrap;
   }
 
   .list{ margin-top: 14px; display:flex; flex-direction:column; gap: 10px; }
+
   .row{
-    display:flex; justify-content:space-between; align-items:center; gap: 12px;
-    padding: 12px; border-radius: 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 18px;
     background: rgba(255,255,255,.70);
     border: 1px solid rgba(17,24,39,.08);
     box-shadow: 0 14px 34px rgba(0,0,0,.10);
@@ -689,7 +780,8 @@ const css = `
 
   .left{ display:flex; align-items:center; gap: 12px; min-width: 0; cursor:pointer; }
   .avatar2{
-    width: 44px; height: 44px; border-radius: 16px;
+    width: 44px; height: 44px;
+    border-radius: 16px;
     display:flex; align-items:center; justify-content:center;
     font-weight: 1100;
     background: rgba(124,58,237,.14);
@@ -700,32 +792,52 @@ const css = `
   .info{ min-width: 0; }
   .name{ font-weight: 1100; color: rgba(11,18,32,.92); word-break: break-word; }
   .meta{
-    margin-top: 4px; font-weight: 850; color: rgba(11,18,32,.66); font-size: 12px;
-    display:flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 4px;
+    font-weight: 850;
+    color: rgba(11,18,32,.66);
+    font-size: 12px;
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
   .dot{ opacity:.55; }
   .meta2{ margin-top: 8px; display:flex; gap: 8px; flex-wrap: wrap; }
   .chip{
-    font-size: 11px; font-weight: 1000; color: rgba(11,18,32,.72);
+    font-size: 11px;
+    font-weight: 1000;
+    color: rgba(11,18,32,.72);
     background: rgba(17,24,39,.06);
     border: 1px solid rgba(17,24,39,.08);
-    padding: 6px 10px; border-radius: 999px;
+    padding: 6px 10px;
+    border-radius: 999px;
   }
 
   .right{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:flex-end; }
   .miniBtn{
-    border:none; padding: 10px 12px; border-radius: 14px; cursor:pointer; font-weight: 1000;
-    background: rgba(17,24,39,.08); color: #111827; white-space: nowrap;
+    border:none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    cursor:pointer;
+    font-weight: 1000;
+    background: rgba(17,24,39,.08);
+    color: #111827;
+    white-space: nowrap;
   }
   .miniBtn.ghost{ background: rgba(6,182,212,.14); color: rgba(11,18,32,.92); }
   .miniBtn.danger{ background: rgba(255,45,85,.14); color: #9f1239; }
 
   .loadingRow{
-    display:flex; gap: 10px; align-items:center; justify-content:center;
-    padding: 16px; font-weight: 950; color: rgba(11,18,32,.70);
+    display:flex;
+    gap: 10px;
+    align-items:center;
+    justify-content:center;
+    padding: 16px;
+    font-weight: 950;
+    color: rgba(11,18,32,.70);
   }
   .spin{
-    width: 16px; height: 16px; border-radius: 999px;
+    width: 16px; height: 16px;
+    border-radius: 999px;
     border: 3px solid rgba(11,18,32,.15);
     border-top-color: rgba(124,58,237,.65);
     animation: spin 1s linear infinite;
@@ -733,10 +845,13 @@ const css = `
   @keyframes spin{ to{ transform: rotate(360deg); } }
 
   .emptyBox{
-    padding: 16px; border-radius: 18px;
+    padding: 16px;
+    border-radius: 18px;
     background: rgba(255,255,255,.65);
     border: 1px solid rgba(17,24,39,.08);
-    text-align:center; font-weight: 950; color: rgba(11,18,32,.70);
+    text-align:center;
+    font-weight: 950;
+    color: rgba(11,18,32,.70);
   }
 
   .bottomNote{
@@ -747,24 +862,73 @@ const css = `
     word-break: break-all;
   }
 
-  /* ✅ Center modals */
+  /* ✅ Center modals (mobile-safe) */
   .mb{
     position:fixed; inset:0;
-    display:flex; align-items:center; justify-content:center;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     background: rgba(0,0,0,.42);
     z-index: 9999;
-    padding: 16px;
+
+    /* ✅ add safe-area + spacing so close/buttons never hidden */
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 14px)
+      14px
+      calc(env(safe-area-inset-bottom, 0px) + 14px);
   }
+
   .mc{
     width:100%;
     max-width: 560px;
     background: rgba(255,255,255,.92);
     border: 1px solid rgba(255,255,255,.60);
     border-radius: 24px;
-    padding: 18px;
     box-shadow: 0 35px 95px rgba(0,0,0,.28);
     backdrop-filter: blur(14px);
+
+    /* ✅ important for mobile: allow scroll inside modal */
+    max-height: calc(100vh - (env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 32px));
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
   }
+
+  .mHeader{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap: 10px;
+    padding: 18px 18px 10px;
+    border-bottom: 1px solid rgba(17,24,39,.08);
+  }
+
+  .mBody{
+    padding: 12px 18px;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mActions{
+    padding: 12px 18px;
+    border-top: 1px solid rgba(17,24,39,.08);
+    background: rgba(255,255,255,.92);
+
+    /* ✅ sticky actions, always visible on mobile */
+    position: sticky;
+    bottom: 0;
+  }
+
+  .xBtn{
+    border:none;
+    width: 40px; height: 40px;
+    border-radius: 14px;
+    cursor:pointer;
+    font-weight: 1100;
+    background: rgba(17,24,39,.08);
+    flex: 0 0 auto;
+  }
+
   .pill{
     display:inline-block;
     padding:6px 12px;
@@ -772,7 +936,7 @@ const css = `
     font-weight:1000;
     font-size:12px;
     border: 1px solid rgba(0,0,0,.08);
-    margin-bottom:10px;
+    margin-bottom:8px;
     background: rgba(124,58,237,.12);
     color:#4c1d95;
   }
@@ -781,12 +945,17 @@ const css = `
   .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
   .pill.confirm{ background: rgba(255,193,7,.14); color:#7c2d12; }
 
-  .mt{ margin:4px 0 6px; font-weight:1100; color:var(--ink); font-size:18px; }
-  .mm{ margin:0 0 14px; color: rgba(11,18,32,.78); font-weight:900; line-height:1.4; }
+  .mt{ margin: 0; font-weight:1100; color:var(--ink); font-size:18px; }
+  .mm{ margin: 0; color: rgba(11,18,32,.78); font-weight:900; line-height:1.45; }
 
-  .mRow{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  .mRow{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
   .mBtn{
-    flex:1;
+    flex: 1 1 140px;
     border:none;
     padding:12px 14px;
     border-radius:16px;
@@ -804,7 +973,6 @@ const css = `
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-top: 10px;
   }
   .kv{
     background: rgba(255,255,255,.72);
@@ -816,8 +984,15 @@ const css = `
   .kv b{ display:block; margin-top: 6px; font-weight: 1100; font-size: 13px; word-break: break-word; }
   .kv.full{ grid-column: 1 / -1; }
 
-  .form{ margin-top: 10px; }
-  .lbl{ display:block; font-weight:1000; color: rgba(11,18,32,.85); margin: 10px 0 6px; font-size: 13px; }
+  .form{ margin:0; }
+
+  .lbl{
+    display:block;
+    font-weight:1000;
+    color: rgba(11,18,32,.85);
+    margin: 10px 0 6px;
+    font-size: 13px;
+  }
   .inp{
     width:100%;
     padding: 12px 12px;
@@ -830,7 +1005,6 @@ const css = `
   .row2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   @media (max-width: 760px){
-    .ua{ padding: 10px; }
     .wrap{ border-radius: 18px; padding: 12px; }
     .topActions{ width:100%; }
     .search, .btn, .btnGhost, .btnDanger{ width:100%; }
@@ -838,5 +1012,6 @@ const css = `
     .right{ width:100%; justify-content:flex-start; }
     .detailGrid{ grid-template-columns: 1fr; }
     .row2{ grid-template-columns: 1fr; }
+    .mBtn{ flex: 1 1 100%; } /* ✅ mobile: full width buttons */
   }
 `;
