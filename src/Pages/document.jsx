@@ -201,13 +201,10 @@ export default function DocumentUpload() {
             {loading ? "Uploading..." : "Upload Document"}
           </button>
 
+          {/* ✅ ONLY Back to Dashboard (View Document link removed) */}
           <div className="links">
-            <span className="link" onClick={() => (window.location.href = "/documents")}>
-              View Uploaded Documents
-            </span>
-            <span className="dot">•</span>
             <span className="link" onClick={() => (window.location.href = "/dashboard")}>
-              Back to Dashboard
+              ← Back to Dashboard
             </span>
           </div>
         </div>

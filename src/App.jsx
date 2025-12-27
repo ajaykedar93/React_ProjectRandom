@@ -5,20 +5,21 @@ import Register from "./Auth/register";
 import Login from "./Auth/login";
 import Forgot from "./Auth/forgot";
 
-/* ================== DASHBOARD LAYOUT ================== */
+/* ================== USER DASHBOARD LAYOUT ================== */
 import Dashboard from "./Pages/dashboard";
 
-/* ================== DASHBOARD PAGES ================== */
+/* ================== USER DASHBOARD PAGES ================== */
 import DashboardHome from "./Pages/DashboardHome";
 import DocumentUpload from "./Pages/document";
 import DocumentGet from "./Pages/documentget";
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
 
-/* ================== ADMIN ================== */
-import AdminDashboard from "./Pages/Admindashboard";
-import UserAll from "./Pages/UserAll.jsx";
-import SettingAll from "./Pages/SettingAll.jsx";
+/* ================== ADMIN PAGES ================== */
+import AdminDashboard from "./Pages/Admin/Admindashboard.jsx";
+import AdminPage from "./Pages/Admin/Admin.jsx";
+import UserAll from "./Pages/Admin/UserAll.jsx";
+import FooterAdmin from "./Pages/Admin/FooterAdmin.jsx";
 
 /* ================== AUTH CONTEXT ================== */
 import { useAuth } from "./contexts/AuthContext.jsx";
@@ -39,8 +40,9 @@ function AdminRoute({ children }) {
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  // ✅ user role check
-  if (user?.role !== "admin") return <Navigate to="/dashboard" replace />;
+  // ✅ role check
+  const role = String(user?.role || "").toLowerCase();
+  if (role !== "admin") return <Navigate to="/dashboard" replace />;
 
   return children;
 }
@@ -54,33 +56,27 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot" element={<Forgot />} />
 
+        {/* ✅ if old link opens /admin/dashboard -> go to /admin */}
+        <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
+
         {/* ================== ADMIN ================== */}
         <Route
-          path="/admin/dashboard"
+          path="/admin"
           element={
             <AdminRoute>
               <AdminDashboard />
             </AdminRoute>
           }
-        />
+        >
+          {/* default tab */}
+          <Route index element={<AdminPage />} />
 
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <UserAll />
-            </AdminRoute>
-          }
-        />
+          {/* admin tabs */}
+          <Route path="admin" element={<AdminPage />} />
+          <Route path="users" element={<UserAll />} />
+         <Route path="/admin/footer-admin" element={<FooterAdmin />} />
 
-        <Route
-          path="/admin/settings"
-          element={
-            <AdminRoute>
-              <SettingAll />
-            </AdminRoute>
-          }
-        />
+        </Route>
 
         {/* ================== USER DASHBOARD ================== */}
         <Route

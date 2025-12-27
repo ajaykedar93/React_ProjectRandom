@@ -6,9 +6,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth(); // ✅ context login
 
-  // ✅ env first, fallback api
-  const API_BASE =
-    import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
+  // ✅ SAME BASE URL (for both user + admin)
+  const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:5000";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -40,9 +39,13 @@ export default function Login() {
 
   const validate = () => {
     const err = {};
-    if (!form.username.trim())
+    const username = form.username.trim();
+    const password = form.password.trim();
+
+    if (!username)
       err.username = isAdmin ? "Admin email required" : "Email or Mobile required";
-    if (!form.password) err.password = "Password required";
+    if (!password) err.password = "Password required";
+
     setErrors(err);
 
     if (Object.keys(err).length) {
@@ -83,26 +86,38 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const endpoint = isAdmin ? "/api/auth/admin-login" : "/api/auth/login";
+      // ✅ ONLY CHANGE: endpoint differs
+      const endpoint = isAdmin ? "/admin/login" : "/api/auth/login";
 
       const data = await apiPost(endpoint, {
         username: form.username.trim(),
-        password: form.password,
+        password: form.password.trim(),
       });
 
-      // ✅ SAVE USER IN CONTEXT
-      login(data.user);
+      if (isAdmin) {
+        // ✅ IMPORTANT: Save token for Admin.jsx (it reads admin_token)
+        if (data?.token) localStorage.setItem("admin_token", data.token);
 
-      openModal(
-        "success",
-        isAdmin ? "Admin Login Success" : "Login Success",
-        data?.message || "Logged in successfully ✅"
-      );
+        // ✅ Save admin in auth context with role=admin (for AdminRoute)
+        const adminObj = data.admin || {};
+        login({ ...adminObj, role: "admin" });
 
-      setTimeout(() => {
-        if (isAdmin) navigate("/admin/dashboard", { replace: true });
-        else navigate("/dashboard", { replace: true });
-      }, 600);
+        openModal("success", "Admin Login Success", data?.message || "Logged in successfully ✅");
+
+        setTimeout(() => {
+          navigate("/admin", { replace: true });
+        }, 600);
+      } else {
+        // ✅ user login same as before
+        localStorage.removeItem("admin_token"); // optional: avoid using old admin token in user session
+        login(data.user);
+
+        openModal("success", "Login Success", data?.message || "Logged in successfully ✅");
+
+        setTimeout(() => {
+          navigate("/dashboard", { replace: true });
+        }, 600);
+      }
     } catch (err) {
       openModal(
         "error",
@@ -165,7 +180,8 @@ export default function Login() {
 
           <div className="field">
             <label className="label">
-              {isAdmin ? "Admin Email" : "Email / Mobile"} <span className="req">*</span>
+              {isAdmin ? "Admin Email" : "Email / Mobile"}{" "}
+              <span className="req">*</span>
             </label>
             <input
               className={`input ${errors.username ? "err" : ""}`}
@@ -197,9 +213,13 @@ export default function Login() {
           <div className="links">
             {!isAdmin ? (
               <>
-                <Link className="link" to="/register">Register</Link>
+                <Link className="link" to="/register">
+                  Register
+                </Link>
                 <span className="dot">•</span>
-                <Link className="link" to="/forgot">Forgot Password?</Link>
+                <Link className="link" to="/forgot">
+                  Forgot Password?
+                </Link>
               </>
             ) : (
               <span className="dot">Admin mode enabled</span>
@@ -211,6 +231,7 @@ export default function Login() {
   );
 }
 
+/* ✅ SAME CSS (unchanged) */
 const css = `
   :root{
     --txt:#0b1220;
@@ -298,9 +319,8 @@ const css = `
     color: rgba(11,18,32,.55);
     letter-spacing:.2px;
   }
-  .modeTag.on{
-    color: rgba(11,18,32,.88);
-  }
+  .modeTag.on{ color: rgba(11,18,32,.88); }
+
   .toggle{
     width: 46px;
     height: 26px;
@@ -328,9 +348,7 @@ const css = `
     box-shadow: 0 10px 24px rgba(0,0,0,.18);
     transition: transform .18s ease;
   }
-  .toggle.on .knob{
-    transform: translateX(20px);
-  }
+  .toggle.on .knob{ transform: translateX(20px); }
 
   .field{ display:flex; flex-direction:column; margin-top:12px; }
   .label{ font-size:12px; font-weight:900; color: rgba(11,18,32,.85); margin-bottom:6px; }
@@ -433,7 +451,6 @@ const css = `
   .mt{ margin:4px 0 6px; font-weight:980; color:var(--txt); font-size:18px; }
   .mm{ margin:0 0 14px; color:rgba(11,18,32,.78); font-weight:850; line-height:1.4; }
 
-  .mActions{ display:flex; gap:10px; }
   .mBtn{
     width:100%;
     border:none;

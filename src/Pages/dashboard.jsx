@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
+import NavbarDoc from "../components/NavbarDoc.jsx";
+import FooterDoc from "../components/FooterDoc.jsx";
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const { user, logout: ctxLogout } = useAuth();
 
   const tabs = useMemo(
@@ -13,22 +15,14 @@ export default function Dashboard() {
       { label: "Home", path: "/dashboard" },
       { label: "Document", path: "/dashboard/document" },
       { label: "Get Document", path: "/dashboard/documentget" },
-
-      // ✅ TEXT DOC
       { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
       { label: "Get Text Docs", path: "/dashboard/gettextdoc" },
-
-    
     ],
     []
   );
 
-  // ✅ user from AuthContext (ProtectedRoute ensures this exists)
   const [me, setMe] = useState(null);
-
-  useEffect(() => {
-    setMe(user || null);
-  }, [user]);
+  useEffect(() => setMe(user || null), [user]);
 
   const displayName =
     me?.full_name ||
@@ -41,15 +35,11 @@ export default function Dashboard() {
 
   const logout = () => {
     try {
-      // ✅ preferred: context logout (if your context supports it)
       if (typeof ctxLogout === "function") ctxLogout();
     } catch {}
-
-    // ✅ keep your old cleanup also (safe)
     try {
       localStorage.removeItem("auth_user");
     } catch {}
-
     navigate("/login", { replace: true });
   };
 
@@ -59,9 +49,24 @@ export default function Dashboard() {
     return activePath === tabPath || activePath.startsWith(tabPath + "/");
   };
 
-  // ✅ tab scroll refs
   const tabListRef = useRef(null);
   const tabRefs = useRef({});
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [tabsOpen, setTabsOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 740px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) setTabsOpen(true);
+    if (isMobile) setTabsOpen(false);
+  }, [isMobile]);
 
   const scrollActiveTabIntoView = () => {
     const activeTab = tabs.find((t) => getIsActive(t.path));
@@ -84,85 +89,88 @@ export default function Dashboard() {
       const target =
         container.scrollLeft + (left - containerRect.width / 2 + elRect.width / 2);
 
-      container.scrollTo({
-        left: Math.max(0, target),
-        behavior: "smooth",
-      });
+      container.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
     }
   };
 
   useEffect(() => {
-    scrollActiveTabIntoView();
+    if (tabsOpen) scrollActiveTabIntoView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath]);
+  }, [activePath, tabsOpen]);
+
+  const onTabClick = (path) => {
+    navigate(path);
+    if (isMobile) setTabsOpen(false);
+  };
 
   return (
     <div className="dash">
       <style>{css}</style>
       <div className="bg" />
 
-      <header className="top">
-        <div className="brand">
-          <div className="logo">D</div>
-          <div className="brandText">
-            <div className="brandTitle">Dashboard</div>
-            <div className="brandSub">Home • Document • Get Document</div>
-          </div>
-        </div>
+      <NavbarDoc displayName={displayName} displayEmail={displayEmail} logout={logout} />
 
-        <div className="right">
-          <button className="logoutBtn" onClick={logout} type="button">
-            Logout
-          </button>
-
-          <div className="me">
-            <div className="devline" aria-label="developer-credit">
-              <span className="codeIcon" aria-hidden="true">
-                {"</>"}
-              </span>
-              <span className="devText">Develope by Ajay Kedar</span>
-            </div>
-
-            <div className="meName">{displayName}</div>
-            {displayEmail ? <div className="meEmail">{displayEmail}</div> : null}
-          </div>
-        </div>
-      </header>
-
+      {/* ✅ Main content */}
       <main className="wrap">
         <aside className="side">
           <div className="sideCard">
-            <div className="sideTitle">Menu</div>
+            <div className="sideTopRow">
+              <div className="sideTitle">Menu</div>
 
-            <div className="tabStrip">
-              <div
-                ref={tabListRef}
-                className="tabList"
-                role="tablist"
-                aria-label="Dashboard Tabs"
-              >
-                {tabs.map((t) => {
-                  const active = getIsActive(t.path);
-                  return (
+              {isMobile ? (
+                <div className="miniControls">
+                  {!tabsOpen ? (
                     <button
-                      key={t.path}
-                      ref={(el) => (tabRefs.current[t.path] = el)}
-                      className={`tabBtn ${active ? "active" : ""}`}
-                      onClick={() => navigate(t.path)}
                       type="button"
-                      role="tab"
-                      aria-selected={active}
+                      className="miniIconBtn"
+                      onClick={() => setTabsOpen(true)}
+                      aria-label="Open tabs"
                     >
-                      <span className="tabDot" />
-                      <span className="tabText">{t.label}</span>
+                      <span className="miniArrow">›</span>
                     </button>
-                  );
-                })}
-              </div>
-
-              <div className="fadeLeft" aria-hidden="true" />
-              <div className="fadeRight" aria-hidden="true" />
+                  ) : (
+                    <button
+                      type="button"
+                      className="miniIconBtn close"
+                      onClick={() => setTabsOpen(false)}
+                      aria-label="Close tabs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ) : null}
             </div>
+
+            {(tabsOpen || !isMobile) && (
+              <div className="tabStrip">
+                <div ref={tabListRef} className="tabList" role="tablist" aria-label="Dashboard Tabs">
+                  {tabs.map((t) => {
+                    const active = getIsActive(t.path);
+                    return (
+                      <button
+                        key={t.path}
+                        ref={(el) => (tabRefs.current[t.path] = el)}
+                        className={`tabBtn ${active ? "active" : ""}`}
+                        onClick={() => onTabClick(t.path)}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                      >
+                        <span className="tabDot" />
+                        <span className="tabText">{t.label}</span>
+                        <span className={`tabArrow ${active ? "open" : ""}`} aria-hidden="true">
+                          ›
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="fadeLeft" aria-hidden="true" />
+                <div className="fadeRight" aria-hidden="true" />
+              </div>
+            )}
           </div>
         </aside>
 
@@ -172,6 +180,9 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
+
+      {/* ✅ Footer ONLY at bottom (not fixed) */}
+      <FooterDoc />
     </div>
   );
 }
@@ -192,7 +203,7 @@ const css = `
   *{ box-sizing: border-box; }
 
   .dash{
-    height: 100dvh;
+    min-height: 100dvh;
     width: 100%;
     position: relative;
     display: flex;
@@ -214,58 +225,6 @@ const css = `
     z-index:0;
   }
 
-  .top{
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    background: rgba(255,255,255,.72);
-    border-bottom: 1px solid rgba(255,255,255,.60);
-    box-shadow: 0 18px 60px rgba(0,0,0,.12);
-    backdrop-filter: blur(16px);
-  }
-
-  .brand{ display:flex; align-items:center; gap: 10px; min-width: 160px; flex: 1 1 auto; }
-  .logo{
-    width: 42px; height: 42px; border-radius: 16px;
-    display:flex; align-items:center; justify-content:center;
-    font-weight: 1100;
-    color: #081018;
-    background: linear-gradient(90deg, #fde047 0%, #fb7185 30%, #60a5fa 65%, #34d399 100%);
-    box-shadow: 0 18px 40px rgba(0,0,0,.14);
-    flex: 0 0 auto;
-  }
-
-  .brandTitle{ font-weight: 1100; color: var(--txt); font-size: 15px; }
-  .brandSub{ font-weight: 900; color: var(--muted); font-size: 12px; margin-top: 2px; }
-
-  .right{ display:flex; align-items:flex-start; justify-content:flex-end; gap: 10px; flex-wrap: wrap; }
-  .logoutBtn{
-    border:none; cursor:pointer; padding: 10px 12px; border-radius: 14px;
-    color:#fff; font-weight: 1000;
-    background: linear-gradient(90deg, #ff2d55 0%, #ef4444 55%, #fb7185 100%);
-    box-shadow: 0 14px 30px rgba(255,45,85,.22);
-    white-space: nowrap;
-  }
-  .me{ text-align: right; line-height: 1.15; min-width: min(260px, 70vw); max-width: 520px; }
-  .devline{
-    display:flex; align-items:center; justify-content:flex-end; gap: 10px;
-    margin: 0 0 8px; padding: 8px 10px; border-radius: 16px;
-    background: rgba(255,255,255,.55);
-    border: 1px solid rgba(255,255,255,.55);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 14px 40px rgba(0,0,0,.10);
-    user-select:none;
-  }
-  .codeIcon{ font-weight: 1000; color:#ff2d55; font-size: 16px; }
-  .devText{ font-weight: 1000; color: rgba(11,18,32,.88); font-size: 13px; }
-  .meName{ font-size: 12px; font-weight: 1000; color: var(--txt); word-break: break-word; }
-  .meEmail{ font-size: 11px; font-weight: 900; color: rgba(7,17,38,.55); word-break: break-word; margin-top: 2px; }
-
   .wrap{
     position: relative; z-index: 1;
     width: 100%; max-width: 1280px; margin: 0 auto;
@@ -282,12 +241,47 @@ const css = `
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 24px;
-    padding: 16px;
+    padding: 14px;
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
     overflow: hidden;
   }
-  .sideTitle{ font-weight: 1100; color: var(--txt); font-size: 14px; margin-bottom: 10px; }
+
+  .sideTopRow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .sideTitle{ font-weight: 1100; color: var(--txt); font-size: 14px; }
+
+  .miniControls{ display:flex; align-items:center; gap: 8px; }
+  .miniIconBtn{
+    border:none;
+    cursor:pointer;
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.62);
+    border: 1px solid rgba(255,255,255,.65);
+    box-shadow: 0 14px 40px rgba(0,0,0,.08);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight: 1100;
+    color: rgba(7,17,38,.86);
+  }
+  .miniIconBtn.close{
+    border: 1px solid rgba(239,68,68,.22);
+    color: #ef4444;
+  }
+  .miniArrow{
+    display:inline-block;
+    font-size: 20px;
+    line-height: 1;
+  }
 
   .tabStrip{ position: relative; }
 
@@ -305,7 +299,7 @@ const css = `
     gap: 10px;
     border:none;
     cursor:pointer;
-    padding: 12px 12px;
+    padding: 11px 12px;
     border-radius: 18px;
     background: rgba(255,255,255,.62);
     font-weight: 1000;
@@ -332,6 +326,17 @@ const css = `
   .tabBtn.active .tabDot{ background: linear-gradient(90deg, var(--flameA), var(--flameB)); }
   .tabText{ white-space: nowrap; }
 
+  .tabArrow{
+    margin-left: auto;
+    display:none;
+    font-size: 18px;
+    line-height: 1;
+    transform: rotate(0deg);
+    transition: transform .18s ease;
+    opacity: .9;
+  }
+  .tabArrow.open{ transform: rotate(90deg); }
+
   .pageShell{
     height: 100%;
     width: 100%;
@@ -353,11 +358,7 @@ const css = `
   }
 
   @media (max-width: 740px){
-    .top{ flex-direction: column; align-items: stretch; }
-    .right{ width: 100%; justify-content: space-between; align-items: flex-start; }
-    .me{ text-align: left; width: 100%; min-width: unset; }
-    .devline{ justify-content: flex-start; }
-    .brandSub{ display:none; }
+    .tabArrow{ display:inline-block; }
 
     .tabList{
       flex-direction: row;
@@ -366,7 +367,7 @@ const css = `
       overflow-y: hidden;
       width: 100%;
       gap: 8px;
-      padding: 6px 10px 10px;
+      padding: 6px 8px 8px;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
       touch-action: pan-x;
@@ -377,8 +378,8 @@ const css = `
 
     .tabBtn{
       width: auto;
-      min-width: 20vw;
-      max-width: 44vw;
+      min-width: 34vw;
+      max-width: 62vw;
       padding: 9px 10px;
       border-radius: 16px;
       font-size: 12px;

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function UserAll() {
-  // ✅ MUST match backend mount: /api/auth/users :contentReference[oaicite:1]{index=1}
   const API_BASE = "https://express-projectrandom.onrender.com";
   const USERS_BASE = `${API_BASE}/api/auth/users`;
 
@@ -13,13 +12,13 @@ export default function UserAll() {
   const [loading, setLoading] = useState(false);
 
   const [q, setQ] = useState("");
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh] = useState(true); // auto ON (no button)
   const [lastSync, setLastSync] = useState(null);
 
   // Center modal (info/success/error/confirm)
   const [modal, setModal] = useState({
     open: false,
-    type: "info", // info|success|error|confirm
+    type: "info",
     title: "",
     message: "",
     onConfirm: null,
@@ -46,7 +45,7 @@ export default function UserAll() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUser, setDetailUser] = useState(null);
 
-  // Update modal
+  // Update modal (unchanged)
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -89,14 +88,12 @@ export default function UserAll() {
     const key = q.trim().toLowerCase();
     if (!key) return users;
     return users.filter((u) => {
-      const blob = `${u.full_name || ""} ${u.first_name || ""} ${u.last_name || ""} ${u.email_address || ""} ${
-        u.mobile_number || ""
-      }`.toLowerCase();
+      const blob = `${u.full_name || ""} ${u.first_name || ""} ${u.last_name || ""} ${u.email_address || ""}`
+        .toLowerCase();
       return blob.includes(key);
     });
   }, [users, q]);
 
-  // ✅ Safe fetch helper (no crash if response not JSON) :contentReference[oaicite:2]{index=2}
   const safeFetchJson = async (url, options = {}, controller) => {
     const res = await fetch(url, {
       mode: "cors",
@@ -124,7 +121,7 @@ export default function UserAll() {
     try {
       if (!silent) setLoading(true);
 
-      const data = await safeFetchJson(`${USERS_BASE}`, { method: "GET" }, controller); // :contentReference[oaicite:3]{index=3}
+      const data = await safeFetchJson(`${USERS_BASE}`, { method: "GET" }, controller);
       if (!aliveRef.current) return;
 
       setUsers(Array.isArray(data) ? data : []);
@@ -161,7 +158,6 @@ export default function UserAll() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh]);
 
-  // ESC close modals
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -175,13 +171,6 @@ export default function UserAll() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // admin logout
-  const logoutAdmin = () => {
-    localStorage.removeItem("auth_user");
-    navigate("/login", { replace: true });
-  };
-
-  // open user details
   const openDetails = async (id) => {
     const controller = new AbortController();
     try {
@@ -189,7 +178,7 @@ export default function UserAll() {
       setDetailLoading(true);
       setDetailUser(null);
 
-      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "GET" }, controller); // :contentReference[oaicite:4]{index=4}
+      const data = await safeFetchJson(`${USERS_BASE}/${id}`, { method: "GET" }, controller);
       if (!aliveRef.current) return;
 
       setDetailUser(data);
@@ -319,7 +308,6 @@ export default function UserAll() {
     return () => controller.abort();
   };
 
-  // ✅ modal close helpers (prevent invisible close)
   const closeDetails = () => {
     if (detailLoading) return;
     setDetailOpen(false);
@@ -333,22 +321,17 @@ export default function UserAll() {
     <div className="ua">
       <style>{css}</style>
 
-      {/* Safe spaces for page */}
-      <div className="safeTop" />
-
-      {/* Center Modal (alerts/confirms) */}
+      {/* Center Modal */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
             <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
             <h3 className="mt">{modal.title}</h3>
-
             <div className="mBody">
               <p className="mm" style={{ whiteSpace: "pre-line" }}>
                 {modal.message}
               </p>
             </div>
-
             <div className="mActions">
               {modal.type === "confirm" ? (
                 <div className="mRow">
@@ -369,7 +352,7 @@ export default function UserAll() {
         </div>
       ) : null}
 
-      {/* Details Modal */}
+      {/* Details Modal (full details, only Close) */}
       {detailOpen ? (
         <div className="mb" onClick={closeDetails}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -378,8 +361,6 @@ export default function UserAll() {
                 <div className="pill info">DETAILS</div>
                 <h3 className="mt">User Details</h3>
               </div>
-
-              {/* ✅ always visible close button */}
               <button className="xBtn" type="button" onClick={closeDetails} aria-label="Close details">
                 ✕
               </button>
@@ -410,7 +391,6 @@ export default function UserAll() {
                     <span>Mobile</span>
                     <b>{safeText(detailUser.mobile_number)}</b>
                   </div>
-
                   <div className="kv">
                     <span>Village/City</span>
                     <b>{safeText(detailUser.village_city)}</b>
@@ -419,7 +399,6 @@ export default function UserAll() {
                     <span>Pincode</span>
                     <b>{safeText(detailUser.pincode)}</b>
                   </div>
-
                   <div className="kv">
                     <span>State</span>
                     <b>{safeText(detailUser.state)}</b>
@@ -428,12 +407,10 @@ export default function UserAll() {
                     <span>District</span>
                     <b>{safeText(detailUser.district)}</b>
                   </div>
-
                   <div className="kv">
                     <span>Taluka</span>
                     <b>{safeText(detailUser.taluka)}</b>
                   </div>
-
                   <div className="kv full">
                     <span>Created At</span>
                     <b>{formatIndia(detailUser.created_at)}</b>
@@ -442,19 +419,8 @@ export default function UserAll() {
               )}
             </div>
 
-            {/* ✅ sticky actions (never hidden on mobile) */}
             <div className="mActions">
               <div className="mRow">
-                {detailUser ? (
-                  <>
-                    <button className="mBtn ghost" type="button" onClick={() => openEdit(detailUser.id)} disabled={detailLoading}>
-                      Update
-                    </button>
-                    <button className="mBtn danger" type="button" onClick={() => askDelete(detailUser)} disabled={detailLoading}>
-                      Delete
-                    </button>
-                  </>
-                ) : null}
                 <button className="mBtn" type="button" onClick={closeDetails} disabled={detailLoading}>
                   Close
                 </button>
@@ -464,7 +430,7 @@ export default function UserAll() {
         </div>
       ) : null}
 
-      {/* Edit Modal */}
+      {/* Update Modal (same) */}
       {editOpen ? (
         <div className="mb" onClick={closeEdit}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -473,7 +439,6 @@ export default function UserAll() {
                 <div className="pill info">UPDATE</div>
                 <h3 className="mt">Update User</h3>
               </div>
-
               <button className="xBtn" type="button" onClick={closeEdit} aria-label="Close update">
                 ✕
               </button>
@@ -543,11 +508,7 @@ export default function UserAll() {
                 <div className="row2">
                   <div>
                     <label className="lbl">State</label>
-                    <input
-                      className="inp"
-                      value={form.state}
-                      onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))}
-                    />
+                    <input className="inp" value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} />
                   </div>
                   <div>
                     <label className="lbl">District</label>
@@ -581,7 +542,6 @@ export default function UserAll() {
                 </div>
               </div>
 
-              {/* ✅ sticky actions */}
               <div className="mActions">
                 <div className="mRow">
                   <button className="mBtn ghost" type="button" onClick={closeEdit} disabled={editLoading}>
@@ -609,47 +569,39 @@ export default function UserAll() {
           </div>
 
           <div className="topActions">
-            <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name/email/mobile..." />
+            <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name/email..." />
             <button className="btn" type="button" onClick={() => fetchUsers(false)} disabled={loading}>
               {loading ? "Loading..." : "Refresh"}
-            </button>
-            <button className={`btnGhost ${autoRefresh ? "on" : ""}`} type="button" onClick={() => setAutoRefresh((p) => !p)}>
-              Auto: {autoRefresh ? "ON" : "OFF"}
-            </button>
-            <button className="btnDanger" type="button" onClick={logoutAdmin}>
-              Logout
             </button>
           </div>
         </div>
 
-        <div className="list">
+        {/* ✅ GRID (auto adjust) */}
+        <div className="grid">
           {loading && users.length === 0 ? (
-            <div className="loadingRow">
-              <div className="spin" /> Loading users...
+            <div className="emptyBox" style={{ gridColumn: "1 / -1" }}>
+              <div className="loadingRow">
+                <div className="spin" /> Loading users...
+              </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="emptyBox">No users found.</div>
+            <div className="emptyBox" style={{ gridColumn: "1 / -1" }}>
+              No users found.
+            </div>
           ) : (
             filtered.map((u) => (
-              <div key={u.id} className="row">
-                <div className="left" onClick={() => openDetails(u.id)} role="button" tabIndex={0}>
+              <div key={u.id} className="card">
+                <div className="cardLeft" onClick={() => openDetails(u.id)} role="button" tabIndex={0}>
                   <div className="avatar2">{(u.first_name?.[0] || "U").toUpperCase()}</div>
+
                   <div className="info">
-                    <div className="name">{u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim()}</div>
-                    <div className="meta">
-                      <span>{safeText(u.email_address)}</span>
-                      <span className="dot">•</span>
-                      <span>{safeText(u.mobile_number)}</span>
-                    </div>
-                    <div className="meta2">
-                      <span className="chip">{formatIndia(u.created_at)}</span>
-                      {u.state ? <span className="chip">{u.state}</span> : null}
-                      {u.district ? <span className="chip">{u.district}</span> : null}
-                    </div>
+                    {/* ✅ ONLY NAME + EMAIL */}
+                    <div className="name">{u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim() || "User"}</div>
+                    <div className="email">{safeText(u.email_address)}</div>
                   </div>
                 </div>
 
-                <div className="right">
+                <div className="cardRight">
                   <button className="miniBtn" type="button" onClick={() => openDetails(u.id)}>
                     Details
                   </button>
@@ -665,27 +617,21 @@ export default function UserAll() {
           )}
         </div>
 
-        <div className="bottomNote">
-          API: <b>{USERS_BASE}</b>
-        </div>
+      
       </div>
-
-      <div className="safeBottom" />
     </div>
   );
 }
 
 const css = `
-  :root{ --ink:#0b1220; --muted: rgba(11,18,32,.65); --shadow: 0 28px 90px rgba(0,0,0,.16); }
+  :root{ --ink:#0b1220; --muted: rgba(11,18,32,.65); }
   *{ box-sizing: border-box; }
 
-  /* ✅ Page safe top/bottom for mobile notch */
-  .safeTop{ height: calc(env(safe-area-inset-top, 0px) + 8px); }
-  .safeBottom{ height: calc(env(safe-area-inset-bottom, 0px) + 14px); }
-
+  /* full page */
   .ua{
     min-height:100vh;
-    padding: 12px;
+    margin:0;
+    padding:0;
     background:
       radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .22), transparent 60%),
       radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .18), transparent 58%),
@@ -694,18 +640,24 @@ const css = `
     color: var(--ink);
   }
 
+  /* container full width but with small safe gutter (so not touch edges) */
   .wrap{
-    max-width: 1100px;
+    width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
     background: rgba(255,255,255,.86);
-    border: 1px solid rgba(255,255,255,.60);
-    border-radius: 22px;
-    padding: 16px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(14px);
+    border-radius: 0;
+    padding: 0;
   }
 
-  .top{ display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; flex-wrap:wrap; }
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap: 12px;
+    flex-wrap:wrap;
+    padding: 12px;
+  }
   .title{ margin:0; font-size: clamp(18px, 2.8vw, 26px); font-weight: 1100; }
   .sub{ margin: 8px 0 0; font-weight: 850; color: var(--muted); font-size: 13px; }
   .sync{ color: rgba(11,18,32,.55); }
@@ -716,11 +668,11 @@ const css = `
     flex-wrap: wrap;
     align-items:center;
     justify-content:flex-end;
-    width: min(640px, 100%);
+    width: min(520px, 100%);
   }
   .search{
-    flex: 1 1 260px;
-    min-width: 200px;
+    flex: 1 1 240px;
+    min-width: 180px;
     padding: 12px 12px;
     border-radius: 16px;
     border: 1px solid rgba(17,24,39,.10);
@@ -728,7 +680,6 @@ const css = `
     font-weight: 900;
     background: rgba(255,255,255,.70);
   }
-
   .btn{
     border:none;
     padding: 12px 14px;
@@ -737,48 +688,40 @@ const css = `
     color:#fff;
     font-weight:1000;
     background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 55%, #22c55e 100%);
-    box-shadow: 0 14px 30px rgba(124,58,237,.16);
     white-space: nowrap;
   }
   .btn:disabled{ opacity:.75; cursor:not-allowed; }
 
-  .btnGhost{
-    border: 1px solid rgba(11,18,32,.12);
-    padding: 12px 14px;
-    border-radius: 16px;
-    cursor:pointer;
-    font-weight: 1000;
-    background: rgba(255,255,255,.62);
-    white-space: nowrap;
-  }
-  .btnGhost.on{ background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.25); }
-
-  .btnDanger{
-    border:none;
-    padding: 12px 14px;
-    border-radius: 16px;
-    cursor:pointer;
-    font-weight: 1000;
-    color:#fff;
-    background: linear-gradient(90deg, #9f1239 0%, #ef4444 100%);
-    white-space: nowrap;
+  /* ✅ responsive grid */
+  .grid{
+    padding: 12px;
+    display:grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 
-  .list{ margin-top: 14px; display:flex; flex-direction:column; gap: 10px; }
-
-  .row{
+  /* card auto fit (no stretch overflow) */
+  .card{
+    background: rgba(255,255,255,.72);
+    border: 1px solid rgba(17,24,39,.08);
+    border-radius: 18px;
+    padding: 12px;
     display:flex;
+    align-items:center;
     justify-content:space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .cardLeft{
+    display:flex;
     align-items:center;
     gap: 12px;
-    padding: 12px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.70);
-    border: 1px solid rgba(17,24,39,.08);
-    box-shadow: 0 14px 34px rgba(0,0,0,.10);
+    min-width: 0;
+    cursor:pointer;
+    flex: 1 1 auto;
   }
 
-  .left{ display:flex; align-items:center; gap: 12px; min-width: 0; cursor:pointer; }
   .avatar2{
     width: 44px; height: 44px;
     border-radius: 16px;
@@ -790,29 +733,28 @@ const css = `
   }
 
   .info{ min-width: 0; }
-  .name{ font-weight: 1100; color: rgba(11,18,32,.92); word-break: break-word; }
-  .meta{
-    margin-top: 4px;
-    font-weight: 850;
-    color: rgba(11,18,32,.66);
+  .name{
+    font-weight: 1100;
+    color: rgba(11,18,32,.92);
+    word-break: break-word;
+    line-height: 1.1;
+  }
+  .email{
+    margin-top: 6px;
     font-size: 12px;
+    font-weight: 900;
+    color: rgba(11,18,32,.66);
+    word-break: break-word;
+  }
+
+  .cardRight{
     display:flex;
     gap: 8px;
     flex-wrap: wrap;
-  }
-  .dot{ opacity:.55; }
-  .meta2{ margin-top: 8px; display:flex; gap: 8px; flex-wrap: wrap; }
-  .chip{
-    font-size: 11px;
-    font-weight: 1000;
-    color: rgba(11,18,32,.72);
-    background: rgba(17,24,39,.06);
-    border: 1px solid rgba(17,24,39,.08);
-    padding: 6px 10px;
-    border-radius: 999px;
+    justify-content:flex-end;
+    flex: 0 0 auto;
   }
 
-  .right{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:flex-end; }
   .miniBtn{
     border:none;
     padding: 10px 12px;
@@ -826,12 +768,22 @@ const css = `
   .miniBtn.ghost{ background: rgba(6,182,212,.14); color: rgba(11,18,32,.92); }
   .miniBtn.danger{ background: rgba(255,45,85,.14); color: #9f1239; }
 
+  .emptyBox{
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.65);
+    border: 1px solid rgba(17,24,39,.08);
+    text-align:center;
+    font-weight: 950;
+    color: rgba(11,18,32,.70);
+  }
+
   .loadingRow{
     display:flex;
     gap: 10px;
     align-items:center;
     justify-content:center;
-    padding: 16px;
+    padding: 8px;
     font-weight: 950;
     color: rgba(11,18,32,.70);
   }
@@ -844,25 +796,15 @@ const css = `
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
 
-  .emptyBox{
-    padding: 16px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.65);
-    border: 1px solid rgba(17,24,39,.08);
-    text-align:center;
-    font-weight: 950;
-    color: rgba(11,18,32,.70);
-  }
-
   .bottomNote{
-    margin-top: 12px;
+    padding: 12px;
     font-size: 12px;
     font-weight: 900;
     color: rgba(11,18,32,.60);
     word-break: break-all;
   }
 
-  /* ✅ Center modals (mobile-safe) */
+  /* modals */
   .mb{
     position:fixed; inset:0;
     display:flex;
@@ -870,12 +812,7 @@ const css = `
     justify-content:center;
     background: rgba(0,0,0,.42);
     z-index: 9999;
-
-    /* ✅ add safe-area + spacing so close/buttons never hidden */
-    padding:
-      calc(env(safe-area-inset-top, 0px) + 14px)
-      14px
-      calc(env(safe-area-inset-bottom, 0px) + 14px);
+    padding: 0;
   }
 
   .mc{
@@ -886,12 +823,11 @@ const css = `
     border-radius: 24px;
     box-shadow: 0 35px 95px rgba(0,0,0,.28);
     backdrop-filter: blur(14px);
-
-    /* ✅ important for mobile: allow scroll inside modal */
-    max-height: calc(100vh - (env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 32px));
+    max-height: 100vh;
     display:flex;
     flex-direction:column;
     overflow:hidden;
+    margin: 0;
   }
 
   .mHeader{
@@ -913,10 +849,6 @@ const css = `
     padding: 12px 18px;
     border-top: 1px solid rgba(17,24,39,.08);
     background: rgba(255,255,255,.92);
-
-    /* ✅ sticky actions, always visible on mobile */
-    position: sticky;
-    bottom: 0;
   }
 
   .xBtn{
@@ -985,14 +917,7 @@ const css = `
   .kv.full{ grid-column: 1 / -1; }
 
   .form{ margin:0; }
-
-  .lbl{
-    display:block;
-    font-weight:1000;
-    color: rgba(11,18,32,.85);
-    margin: 10px 0 6px;
-    font-size: 13px;
-  }
+  .lbl{ display:block; font-weight:1000; color: rgba(11,18,32,.85); margin: 10px 0 6px; font-size: 13px; }
   .inp{
     width:100%;
     padding: 12px 12px;
@@ -1005,13 +930,12 @@ const css = `
   .row2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   @media (max-width: 760px){
-    .wrap{ border-radius: 18px; padding: 12px; }
     .topActions{ width:100%; }
-    .search, .btn, .btnGhost, .btnDanger{ width:100%; }
-    .row{ flex-direction:column; align-items:flex-start; }
-    .right{ width:100%; justify-content:flex-start; }
+    .search, .btn{ width:100%; }
+    .card{ flex-direction:column; align-items:flex-start; }
+    .cardRight{ width:100%; justify-content:flex-start; }
     .detailGrid{ grid-template-columns: 1fr; }
     .row2{ grid-template-columns: 1fr; }
-    .mBtn{ flex: 1 1 100%; } /* ✅ mobile: full width buttons */
+    .mc{ max-width: 100%; border-radius: 0; }
   }
 `;

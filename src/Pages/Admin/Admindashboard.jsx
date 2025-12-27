@@ -1,34 +1,40 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext.jsx";
+import DashboardStatic from "./DashboardStatic.jsx"; // ✅ ADD THIS
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const authUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("auth_user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
+  // ✅ Use Auth Context only
+  const { user, loading, logout } = useAuth();
 
-  const adminName = "Ajay Kedar";
-  const adminEmail = authUser?.email_address || authUser?.email || "";
+  const adminName = user?.name || user?.full_name || "Admin";
+  const adminEmail = user?.email_address || user?.email || "";
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Tabs only inside mobile menu (drawer)
-  const tabs = [
-    { key: "Dashboard", icon: "📊", path: "/admin/dashboard" },
-    { key: "Users", icon: "👥", path: "/admin/users" },
-    { key: "Settings", icon: "⚙️", path: "/admin/settings" },
-  ];
+  // ✅ Admin Tabs (content opens below dashboard via <Outlet/>)
+  const tabs = useMemo(
+    () => [
+      { key: "Dashboard", icon: "📊", path: "/admin" },
+      { key: "Admin", icon: "🛡️", path: "/admin/admin" }, // ✅ NEW TAB
+      { key: "Users", icon: "👥", path: "/admin/users" },
+      { key: "Footer", icon: "⚙️", path: "/admin/footer-admin" },
+    ],
+    []
+  );
 
   const activeKey = useMemo(() => {
-    const hit = tabs.find((t) => location.pathname.startsWith(t.path));
-    return hit?.key || "Dashboard";
+    if (location.pathname === "/admin" || location.pathname === "/admin/") return "Dashboard";
+    if (location.pathname.startsWith("/admin/admin")) return "Admin"; // ✅ NEW
+    if (location.pathname.startsWith("/admin/users")) return "Users";
+    if (location.pathname.startsWith("/admin/footer-admin")) return "Footer";
+    return "Dashboard";
   }, [location.pathname]);
+
+  const isDashboard = activeKey === "Dashboard";
 
   useEffect(() => {
     const onKey = (e) => {
@@ -38,13 +44,21 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // ✅ Safety redirect (only if NOT logged-in, after loading finished)
   useEffect(() => {
-    if (!authUser) navigate("/login", { replace: true });
-  }, [authUser, navigate]);
+    if (loading) return;
+    if (!user) navigate("/login", { replace: true });
+  }, [user, loading, navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("auth_user");
-    navigate("/login", { replace: true });
+  const handleLogout = async () => {
+    try {
+      if (typeof logout === "function") await logout();
+      else localStorage.removeItem("auth_user");
+    } catch (e) {
+      // ignore
+    } finally {
+      navigate("/login", { replace: true });
+    }
   };
 
   const goTab = (t) => {
@@ -52,14 +66,17 @@ export default function AdminDashboard() {
     navigate(t.path);
   };
 
+  if (loading) {
+    return <div style={{ padding: 20, fontWeight: 900 }}>Loading...</div>;
+  }
+
   return (
     <div className="ad">
       <style>{css}</style>
 
-      {/* ✅ Safe-area top spacer (notch + small space) */}
       <div className="safeTop" />
 
-      {/* Top Navbar (NO TABS here) */}
+      {/* ✅ Navbar (always visible) */}
       <header className="nav">
         <div className="navLeft">
           <div className="brandMark" aria-hidden="true">
@@ -72,7 +89,6 @@ export default function AdminDashboard() {
         </div>
 
         <div className="navRight">
-          {/* ✅ Only burger (tabs show only after menu open) */}
           <button
             className={`burger ${menuOpen ? "open" : ""}`}
             type="button"
@@ -86,15 +102,9 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* Mobile Drawer */}
-      <div
-        className={`overlay ${menuOpen ? "show" : ""}`}
-        onClick={() => setMenuOpen(false)}
-      >
-        <aside
-          className={`drawer ${menuOpen ? "show" : ""}`}
-          onClick={(e) => e.stopPropagation()}
-        >
+      {/* ✅ Drawer Menu */}
+      <div className={`overlay ${menuOpen ? "show" : ""}`} onClick={() => setMenuOpen(false)}>
+        <aside className={`drawer ${menuOpen ? "show" : ""}`} onClick={(e) => e.stopPropagation()}>
           <div className="drawerTop">
             <div className="drawerTitle">Menu</div>
             <button className="closeBtn" type="button" onClick={() => setMenuOpen(false)}>
@@ -104,8 +114,14 @@ export default function AdminDashboard() {
 
           <div className="drawerProfile">
             <div className="avatar" aria-hidden="true">
-              AK
+              {String(adminName || "A")
+                .trim()
+                .split(" ")
+                .slice(0, 2)
+                .map((x) => x[0]?.toUpperCase())
+                .join("") || "A"}
             </div>
+
             <div className="pinfo">
               <div className="role">Admin</div>
               <div className="pname">
@@ -115,7 +131,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* ✅ Tabs only here */}
+          {/* ✅ Tabs */}
           <div className="drawerTabs" aria-label="Admin tabs mobile">
             {tabs.map((t) => (
               <button
@@ -132,7 +148,6 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          {/* ✅ Bottom only logout button (no user dashboard link, no hint) */}
           <div className="drawerBottom">
             <button className="primaryBtn" type="button" onClick={handleLogout}>
               Logout
@@ -141,9 +156,9 @@ export default function AdminDashboard() {
         </aside>
       </div>
 
-      {/* Body */}
+      {/* ✅ Main Page (Dashboard + below content area) */}
       <main className="main">
-        {/* ✅ Dashboard content: NO page buttons */}
+        {/* ✅ Dashboard section (always visible) */}
         <section className="heroOne">
           <div className="heroCard">
             <div className="badge">Admin</div>
@@ -151,10 +166,6 @@ export default function AdminDashboard() {
             <h1 className="hTitle">
               Welcome, <span className="nameGlow">{adminName}</span>
             </h1>
-
-            <p className="hDesc">
-              Open the menu to manage <b>Users</b> and <b>Settings</b>.
-            </p>
 
             <div className="miniRow">
               <div className="mini">
@@ -169,16 +180,18 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* ✅ Footer: Admin full text + custom line */}
+        {/* ✅ Below dashboard: show dashboard static by default */}
+        <section className="tabArea">
+          <div className="tabCard">
+            {isDashboard ? <DashboardStatic /> : <Outlet />}
+          </div>
+        </section>
+
+        {/* ✅ Footer (always visible) */}
         <footer className="foot">
           <div className="footLeft">
             <span className="footTag">Admin</span>
-            <span className="footName">{adminName}</span>
-          </div>
-
-          <div className="footRight">
-            <div className="footLine1">Admin</div>
-            <div className="footLine2">@ 2025 Develop by Ajay Kedar</div>
+            <span className="footName">Ajay Kedar</span>
           </div>
         </footer>
 
@@ -212,7 +225,6 @@ const css = `
     color:var(--ink);
   }
 
-  /* ✅ Safe top spacing for notch + small gap */
   .safeTop{
     height: calc(env(safe-area-inset-top, 0px) + 6px);
     width: 100%;
@@ -243,7 +255,6 @@ const css = `
   }
   .brandTitle{ font-weight:1000; letter-spacing:.2px; }
   .brandSub{ font-weight:800; font-size:12px; color: var(--muted); margin-top:2px; }
-
   .navRight{ display:flex; align-items:center; justify-content:flex-end; width:100%; }
 
   .burger{
@@ -338,7 +349,9 @@ const css = `
     display:flex;
     flex-direction:column;
     gap:10px;
+    padding-bottom: 20px;
   }
+
   .primaryBtn{
     border:none;
     padding: 12px 14px;
@@ -381,7 +394,6 @@ const css = `
     background: linear-gradient(90deg, rgba(34,197,94,1), rgba(59,130,246,1), rgba(236,72,153,1));
     -webkit-background-clip:text; background-clip:text; color: transparent;
   }
-  .hDesc{ margin: 0 0 14px; color: var(--muted); font-weight: 850; line-height: 1.45; font-size: 14px; }
 
   .miniRow{
     display:grid;
@@ -397,6 +409,17 @@ const css = `
   }
   .miniLabel{ font-size: 12px; font-weight: 950; color: rgba(11,18,32,.62); }
   .miniVal{ margin-top: 6px; font-size: 14px; font-weight: 1000; }
+
+  .tabArea{ margin-top: 14px; }
+  .tabCard{
+    background: rgba(255,255,255,.72);
+    border: 1px solid rgba(255,255,255,.62);
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(14px);
+    min-height: 180px;
+  }
 
   .foot{
     margin-top: 14px;
@@ -420,21 +443,8 @@ const css = `
     border: 1px solid rgba(34,197,94,.25);
     white-space: nowrap;
   }
-  .footName{
-    font-weight: 1000;
-    white-space: nowrap;
-  }
+  .footName{ font-weight: 1000; white-space: nowrap; }
 
-  .footRight{
-    text-align:right;
-    font-size: 12px;
-    font-weight: 900;
-    color: rgba(11,18,32,.70);
-  }
-  .footLine1{ font-weight: 1000; color: rgba(11,18,32,.75); }
-  .footLine2{ margin-top: 4px; color: rgba(11,18,32,.62); }
-
-  /* ✅ Footer bottom safe spacing */
   .safeBottom{
     height: calc(env(safe-area-inset-bottom, 0px) + 10px);
     width: 100%;
@@ -443,6 +453,5 @@ const css = `
   @media (max-width: 980px){
     .miniRow{ grid-template-columns: 1fr; }
     .foot{ flex-direction:column; align-items:flex-start; }
-    .footRight{ text-align:left; }
   }
 `;

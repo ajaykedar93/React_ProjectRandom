@@ -9,6 +9,44 @@ export default function DocumentGet() {
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
 
+  // ✅ Logged-in user (from localStorage)
+  const auth = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("auth_user") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const userId =
+    auth?.id ??
+    auth?.user_id ??
+    auth?.user?.id ??
+    auth?.user?.user_id ??
+    auth?.uid ??
+    null;
+
+  const token =
+    auth?.token ??
+    auth?.access_token ??
+    auth?.jwt ??
+    auth?.user?.token ??
+    null;
+
+  // ✅ If user not logged in -> go login
+  useEffect(() => {
+    if (!userId) navigate("/login", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // ✅ headers helper (token preferred, else x-user-id fallback)
+  const authHeaders = useMemo(() => {
+    const h = {};
+    if (token) h.Authorization = `Bearer ${token}`;
+    else if (userId) h["x-user-id"] = String(userId); // fallback if no JWT
+    return h;
+  }, [token, userId]);
+
   // Center modal (alert/confirm)
   const [modal, setModal] = useState({
     open: false,
@@ -88,9 +126,7 @@ export default function DocumentGet() {
       if (["xls", "xlsx"].includes(e)) return { emoji: "📊", label: "EXCEL" };
       if (["csv"].includes(e)) return { emoji: "🧾", label: "CSV" };
       if (["txt"].includes(e)) return { emoji: "📄", label: "TEXT" };
-      if (
-        ["js", "ts", "jsx", "tsx", "json", "html", "css", "py", "java", "c", "cpp", "php", "go", "rs"].includes(e)
-      )
+      if (["js", "ts", "jsx", "tsx", "json", "html", "css", "py", "java", "c", "cpp", "php", "go", "rs"].includes(e))
         return { emoji: "💻", label: "CODE" };
       if (["zip", "rar", "7z"].includes(e)) return { emoji: "🗜️", label: "ZIP" };
       return { emoji: "📁", label: (e || "FILE").toUpperCase() };
@@ -107,22 +143,29 @@ export default function DocumentGet() {
     return false;
   };
 
+  // ✅ secure fetch list (NO user_id param)
   const fetchDocs = async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
-      const url = q.trim()
+
+      const baseUrl = q.trim()
         ? `${API_BASE}/api/documents?q=${encodeURIComponent(q.trim())}`
         : `${API_BASE}/api/documents`;
 
-      const res = await fetch(url);
+      const res = await fetch(baseUrl, { headers: authHeaders });
       const text = await res.text();
+
       let data = null;
       try {
         data = JSON.parse(text);
       } catch {}
 
       if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
-      setDocs(Array.isArray(data) ? data : []);
+
+      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+      setDocs(list); // ✅ backend already returns only logged user docs
     } catch (e) {
       openModal({ type: "error", title: "Load Failed", message: e.message || "Server error" });
     } finally {
@@ -135,18 +178,53 @@ export default function DocumentGet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ Download with headers (window.open cannot send headers)
+  const downloadWithAuth = async (doc, openInNewTab = false) => {
+    try {
+      const url = `${API_BASE}/api/documents/${doc.id}/download`;
+      const res = await fetch(url, { headers: authHeaders });
+
+      if (!res.ok) {
+        const text = await res.text();
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch {}
+        throw new Error(data?.message || text || `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const fileName = doc.original_name || `document_${doc.id}.${doc.file_ext || "file"}`;
+
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (openInNewTab) {
+        window.open(blobUrl, "_blank", "noopener,noreferrer");
+        // keep url for tab
+      } else {
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(blobUrl);
+      }
+    } catch (e) {
+      openModal({ type: "error", title: "Download Failed", message: e.message || "Server error" });
+    }
+  };
+
   const onView = (doc) => {
     if (!canPreviewInBrowser(doc)) return;
-    const url = `${API_BASE}/api/documents/${doc.id}/download`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    downloadWithAuth(doc, true);
   };
 
   const onDownload = (doc) => {
-    const url = `${API_BASE}/api/documents/${doc.id}/download`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    downloadWithAuth(doc, false);
   };
 
-  // ✅ Open edit modal (same page)
+  // ✅ Open edit modal
   const openEdit = (doc) => {
     setSelectedDoc(doc);
     setEditTitle(doc.document_title || "");
@@ -171,15 +249,13 @@ export default function DocumentGet() {
       setEditLoading(true);
 
       const fd = new FormData();
-      // backend: document_title optional, short_desc optional, file optional
-      // but title usually should not be empty if user changed it
       if (editTitle.trim()) fd.append("document_title", editTitle.trim());
-      // allow empty desc -> send empty string (backend will COALESCE; empty string will set empty)
       fd.append("short_desc", editDesc ?? "");
       if (editFile) fd.append("file", editFile);
 
       const res = await fetch(`${API_BASE}/api/documents/${selectedDoc.id}`, {
         method: "PUT",
+        headers: authHeaders,
         body: fd,
       });
 
@@ -204,7 +280,7 @@ export default function DocumentGet() {
     }
   };
 
-  // ✅ DELETE confirm + delete same page
+  // ✅ DELETE confirm + delete
   const askDelete = (doc) => {
     openModal({
       type: "confirm",
@@ -222,7 +298,11 @@ export default function DocumentGet() {
   const doDelete = async (id) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/documents/${id}`, { method: "DELETE" });
+
+      const res = await fetch(`${API_BASE}/api/documents/${id}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
 
       const text = await res.text();
       let data = null;
@@ -246,7 +326,7 @@ export default function DocumentGet() {
       <style>{css}</style>
       <div className="bg" />
 
-      {/* ✅ CENTER MODAL (alert + confirm) */}
+      {/* ✅ CENTER MODAL */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -261,11 +341,7 @@ export default function DocumentGet() {
                 <button className="mBtn ghost" type="button" onClick={closeModal}>
                   {modal.cancelText}
                 </button>
-                <button
-                  className="mBtn danger"
-                  type="button"
-                  onClick={() => modal.onConfirm && modal.onConfirm()}
-                >
+                <button className="mBtn danger" type="button" onClick={() => modal.onConfirm && modal.onConfirm()}>
                   {modal.confirmText}
                 </button>
               </div>
@@ -278,7 +354,7 @@ export default function DocumentGet() {
         </div>
       ) : null}
 
-      {/* ✅ EDIT MODAL (center) */}
+      {/* ✅ EDIT MODAL */}
       {editOpen ? (
         <div className="mb" onClick={closeEdit}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -305,11 +381,7 @@ export default function DocumentGet() {
               />
 
               <label className="lbl">Replace File (optional)</label>
-              <input
-                className="inp"
-                type="file"
-                onChange={(e) => setEditFile(e.target.files?.[0] || null)}
-              />
+              <input className="inp" type="file" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
 
               <div className="mRow" style={{ marginTop: 12 }}>
                 <button className="mBtn ghost" type="button" onClick={closeEdit} disabled={editLoading}>
@@ -327,17 +399,14 @@ export default function DocumentGet() {
       <div className="card">
         <div className="head">
           <div className="hleft">
-            <h2 className="title">Uploaded Documents</h2>
-            <p className="sub">Search • View • Download • Update • Delete</p>
+            <h2 className="title">My Documents</h2>
+            <p className="sub">Only your uploaded documents are visible here.</p>
           </div>
 
           <div className="actions">
             <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title..." />
             <button className="btn2" type="button" onClick={fetchDocs} disabled={loading}>
               {loading ? "Loading..." : "Search"}
-            </button>
-            <button className="btnGhost" type="button" onClick={() => navigate("/document")}>
-              + Upload
             </button>
           </div>
         </div>
@@ -351,7 +420,7 @@ export default function DocumentGet() {
           ) : docs.length === 0 ? (
             <div className="empty">
               No documents found.
-              <div className="emptyLink" onClick={() => navigate("/document")}>
+              <div className="emptyLink" onClick={() => navigate("/dashboard/document")}>
                 Upload new document
               </div>
             </div>
@@ -397,12 +466,10 @@ export default function DocumentGet() {
                         Download
                       </button>
 
-                      {/* ✅ NEW: Update */}
                       <button className="edit" type="button" onClick={() => openEdit(d)}>
                         Update
                       </button>
 
-                      {/* ✅ NEW: Delete */}
                       <button className="del" type="button" onClick={() => askDelete(d)}>
                         Delete
                       </button>
@@ -424,6 +491,7 @@ export default function DocumentGet() {
   );
 }
 
+/* ✅ SAME CSS as your page (unchanged styling) */
 const css = `
   :root{
     --txt:#0b1220;
@@ -529,17 +597,6 @@ const css = `
     white-space: nowrap;
   }
   .btn2:disabled{ opacity:.75; cursor:not-allowed; }
-
-  .btnGhost{
-    border:none;
-    padding: 12px 14px;
-    border-radius: 16px;
-    cursor:pointer;
-    font-weight:1000;
-    background: rgba(17,24,39,.08);
-    color: #111827;
-    white-space: nowrap;
-  }
 
   .listWrap{ margin-top: 10px; }
   .loading{
@@ -797,7 +854,6 @@ const css = `
     background: linear-gradient(90deg, #9f1239 0%, #ef4444 100%);
   }
 
-  /* Edit form */
   .form{ margin-top: 10px; }
   .lbl{
     display:block;
@@ -836,7 +892,7 @@ const css = `
       padding: 14px 12px; box-shadow:none;
     }
     .actions{ width:100%; justify-content:stretch; }
-    .search, .btn2, .btnGhost{ width:100%; }
+    .search, .btn2{ width:100%; }
     .btnRow{ justify-content:flex-start; }
     .mb{ padding: 16px; }
     .mc{ border-radius: 20px; }
