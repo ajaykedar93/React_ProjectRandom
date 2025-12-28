@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function DocumentUpload() {
-  const API_BASE = "https://express-projectrandom.onrender.com";
+  // ✅ same API URL
+  const API_URL = "https://express-projectrandom.onrender.com/api/documents";
+
+  // ✅ NEW: read token (user login token)
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("user_token") ||
+    sessionStorage.getItem("token") ||
+    "";
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -10,13 +18,20 @@ export default function DocumentUpload() {
   const [indiaTime, setIndiaTime] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [modal, setModal] = useState({ open: false, type: "info", title: "", message: "" });
-  const openModal = (type, title, message) => setModal({ open: true, type, title, message });
+  const [modal, setModal] = useState({
+    open: false,
+    type: "info", // success | error | info
+    title: "",
+    message: "",
+  });
+
+  const openModal = (type, title, message) =>
+    setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
   const prettySize = useMemo(
     () => (bytes) => {
-      if (!bytes && bytes !== 0) return "-";
+      if (bytes === null || bytes === undefined) return "-";
       const units = ["B", "KB", "MB", "GB"];
       let i = 0;
       let n = Number(bytes);
@@ -32,7 +47,6 @@ export default function DocumentUpload() {
   useEffect(() => {
     const tick = () => {
       try {
-        // TIME ONLY (no date) for India
         setIndiaTime(
           new Date().toLocaleTimeString("en-IN", {
             timeZone: "Asia/Kolkata",
@@ -64,45 +78,73 @@ export default function DocumentUpload() {
       openModal("error", "No File", "Please choose a file to upload.");
       return false;
     }
+    // ✅ NEW: if token missing, do not call API (avoid 401)
+    if (!token) {
+      openModal("error", "Login Required", "Please login first to upload documents.");
+      return false;
+    }
     return true;
   };
 
   const uploadDoc = async () => {
     if (!validate()) return;
 
-    try {
-      setLoading(true);
+    setLoading(true);
 
+    try {
       const fd = new FormData();
       fd.append("document_title", title.trim());
       if (desc.trim()) fd.append("short_desc", desc.trim());
-      fd.append("file", file);
+      fd.append("file", file); // ✅ backend multer single("file")
 
-      const res = await fetch(`${API_BASE}/api/documents`, {
+      const res = await fetch(API_URL, {
         method: "POST",
         body: fd,
+
+        // ✅ NEW: send Bearer token (fix 401)
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+
+        // keep if backend also uses cookies
+        credentials: "include",
       });
 
-      const text = await res.text();
-      let data = null;
+      const raw = await res.text();
+      let data;
       try {
-        data = JSON.parse(text);
-      } catch {}
-
-      if (!res.ok) {
-        throw new Error(data?.message || text || `Upload failed (HTTP ${res.status})`);
+        data = JSON.parse(raw);
+      } catch {
+        data = null;
       }
 
-      openModal("success", "Uploaded", data?.message || "Document uploaded successfully ✅");
+      console.log("UPLOAD STATUS:", res.status);
+      console.log("UPLOAD RESPONSE RAW:", raw);
 
+      // ✅ NEW: if token expired/invalid -> clear token + show message
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_token");
+        sessionStorage.removeItem("token");
+        openModal("error", "Unauthorized", data?.message || "Session expired. Please login again.");
+        return;
+      }
+
+      if (!res.ok) {
+        const msg = data?.message || raw || `Upload failed (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+
+      openModal("success", "Uploaded", data?.message || "Document uploaded ✅");
+
+      // reset
       setTitle("");
       setDesc("");
       setFile(null);
-
       const input = document.getElementById("docFileInput");
       if (input) input.value = "";
     } catch (e) {
-      openModal("error", "Upload Failed", e.message || "Server error");
+      openModal("error", "Upload Failed", e?.message || "Server error");
     } finally {
       setLoading(false);
     }
@@ -112,10 +154,8 @@ export default function DocumentUpload() {
     <div className="dp">
       <style>{css}</style>
 
-      {/* Full page background (still full screen, no gaps) */}
       <div className="bg" />
 
-      {/* Center Modal */}
       {modal.open ? (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -129,15 +169,13 @@ export default function DocumentUpload() {
         </div>
       ) : null}
 
-      {/* FULL WIDTH + FULL HEIGHT CARD (NO OUTSIDE SPACE) */}
       <div className="card">
         <div className="head">
           <div>
             <h2 className="title">Upload Document</h2>
-            <p className="sub">Upload any file format to local storage</p>
+            <p className="sub">Only logged-in user can upload</p>
           </div>
 
-          {/* TIME ONLY */}
           <div className="timeBox">
             <div className="timeLabel">India Time</div>
             <div className="timeValue">{indiaTime}</div>
@@ -174,11 +212,19 @@ export default function DocumentUpload() {
             </label>
 
             <div className="drop">
-              <input id="docFileInput" className="file" type="file" onChange={onPickFile} />
+              <input
+                id="docFileInput"
+                className="file"
+                type="file"
+                onChange={onPickFile}
+              />
+
               <div className="dropInfo">
                 <div className="dropTop">
                   <div className="badge">ANY FORMAT</div>
-                  <div className="hint">pdf • docx • xlsx • csv • txt • js • jpg • png • webp • etc</div>
+                  <div className="hint">
+                    pdf • docx • xlsx • csv • txt • js • jpg • png • etc
+                  </div>
                 </div>
 
                 <div className="picked">
@@ -197,15 +243,24 @@ export default function DocumentUpload() {
             </div>
           </div>
 
-          <button className="submit" type="button" onClick={uploadDoc} disabled={loading}>
+          <button
+            className="submit"
+            type="button"
+            onClick={uploadDoc}
+            disabled={loading}
+          >
             {loading ? "Uploading..." : "Upload Document"}
           </button>
 
-          {/* ✅ ONLY Back to Dashboard (View Document link removed) */}
-          <div className="links">
-            <span className="link" onClick={() => (window.location.href = "/dashboard")}>
-              ← Back to Dashboard
-            </span>
+          <div
+            style={{
+              opacity: 0.7,
+              fontWeight: 800,
+              fontSize: 12,
+              textAlign: "center",
+            }}
+          >
+          
           </div>
         </div>
       </div>
@@ -213,15 +268,14 @@ export default function DocumentUpload() {
   );
 }
 
+// ✅ CSS EXACT SAME (copied from your file)
 const css = `
   :root{
     --txt:#0b1220;
     --muted:rgba(11,18,32,.65);
     --card:rgba(255,255,255,.90);
-    --shadow: 0 26px 80px rgba(0,0,0,.18);
   }
 
-  /* REMOVE ALL OUTSIDE SPACE (IMPORTANT) */
   html, body, #root{
     height:100%;
     width:100%;
@@ -229,18 +283,15 @@ const css = `
     padding:0;
   }
   *{ box-sizing:border-box; }
-  .dp, .dp *{
-    -webkit-tap-highlight-color: transparent;
-  }
 
   .dp{
     min-height:100vh;
     width:100%;
     position:relative;
     overflow:hidden;
-    padding:0;              /* removed */
-    margin:0;               /* removed */
-    display:block;          /* no centering gap */
+    padding:0;
+    margin:0;
+    display:block;
   }
 
   .bg{
@@ -253,17 +304,14 @@ const css = `
     z-index:0; pointer-events:none;
   }
 
-  /* FULL PAGE CARD */
   .card{
     position:relative;
     z-index:1;
     width:100%;
-    min-height:100vh;       /* fill full screen */
+    min-height:100vh;
     background:var(--card);
-    border:0;               /* no outer border gap look */
-    border-radius:0;        /* no rounded edges = full page */
-    padding:3px;           /* inside padding only */
-    box-shadow:none;        /* remove shadow so edges look flush */
+    border-radius:0;
+    padding:10px;
     backdrop-filter: blur(14px);
   }
 
@@ -326,7 +374,7 @@ const css = `
 
   .input{
     width:100%;
-    padding:14px;                 /* more touch friendly */
+    padding:14px;
     border-radius:14px;
     border:1px solid rgba(11,18,32,.10);
     background: rgba(255,255,255,.92);
@@ -341,7 +389,7 @@ const css = `
 
   .textarea{
     width:100%;
-    min-height: 110px;           /* better on mobile */
+    min-height: 110px;
     padding:14px;
     border-radius:14px;
     border:1px solid rgba(11,18,32,.10);
@@ -371,7 +419,7 @@ const css = `
 
   .file{
     width:100%;
-    padding:12px;               /* touch */
+    padding:12px;
     border-radius:16px;
     border:1px solid rgba(17,24,39,.10);
     background: rgba(255,255,255,.75);
@@ -416,7 +464,7 @@ const css = `
   .submit{
     width:100%;
     border:none;
-    padding:10px;               /* touch */
+    padding:14px;
     border-radius:16px;
     cursor:pointer;
     font-weight:1000;
@@ -427,26 +475,6 @@ const css = `
   }
   .submit:disabled{ opacity:.75; cursor:not-allowed; }
 
-  .links{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
-    color: var(--muted);
-    font-weight:900;
-    font-size: 13px;
-    padding-bottom: 8px;
-  }
-  .link{
-    color:#7c3aed;
-    cursor:pointer;
-    text-decoration: underline;
-    font-weight:1000;
-    padding: 8px 6px;          /* larger tap */
-  }
-  .dot{ opacity:.6; }
-
-  /* Modal */
   .mb{
     position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
@@ -478,7 +506,7 @@ const css = `
   }
   .pill.success{ background: rgba(34,197,94,.14); color:#0f5132; }
   .pill.error{ background: rgba(255,45,85,.12); color:#9f1239; }
-  .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
+
   .mt{ margin:4px 0 6px; font-weight:1100; color:var(--txt); font-size:18px; }
   .mm{ margin:0 0 14px; color: rgba(11,18,32,.78); font-weight:900; line-height:1.4; }
   .mBtn{
@@ -493,7 +521,6 @@ const css = `
   }
 
   @media (max-width: 740px){
-    .card{ padding:14px; }
     .drop{ grid-template-columns: 1fr; }
     .timeBox{ width:100%; text-align:left; }
   }

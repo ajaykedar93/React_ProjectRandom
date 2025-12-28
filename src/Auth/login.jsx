@@ -4,10 +4,10 @@ import { useAuth } from "../contexts/AuthContext"; // ✅ correct path
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ context login
+  const { login } = useAuth();
 
-  // ✅ SAME BASE URL (for both user + admin)
-  const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:5000";
+  // ✅ same as your file
+  const API_BASE = import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function Login() {
 
   const [modal, setModal] = useState({
     open: false,
-    type: "info", // success | error | info
+    type: "info",
     title: "",
     message: "",
   });
@@ -25,7 +25,6 @@ export default function Login() {
     setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
-  // ESC closes modal
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && closeModal();
     window.addEventListener("keydown", onKey);
@@ -65,6 +64,7 @@ export default function Login() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      credentials: "include", // ✅ safe (if backend uses cookies too)
     });
 
     const text = await res.text();
@@ -73,10 +73,28 @@ export default function Login() {
       data = JSON.parse(text);
     } catch {}
 
-    if (!res.ok) {
-      throw new Error(data?.message || text || `HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
     return data || {};
+  }
+
+  // ✅ Robust token extractor (fix for 401)
+  function extractToken(data) {
+    // Most common keys
+    if (data?.token) return data.token;
+    if (data?.accessToken) return data.accessToken;
+    if (data?.jwt) return data.jwt;
+
+    // Sometimes nested
+    if (data?.user?.token) return data.user.token;
+    if (data?.user?.accessToken) return data.user.accessToken;
+    if (data?.user?.jwt) return data.user.jwt;
+
+    // Sometimes inside "data"
+    if (data?.data?.token) return data.data.token;
+    if (data?.data?.accessToken) return data.data.accessToken;
+    if (data?.data?.jwt) return data.data.jwt;
+
+    return "";
   }
 
   const handleSubmit = async (e) => {
@@ -86,7 +104,6 @@ export default function Login() {
     try {
       setLoading(true);
 
-      // ✅ ONLY CHANGE: endpoint differs
       const endpoint = isAdmin ? "/admin/login" : "/api/auth/login";
 
       const data = await apiPost(endpoint, {
@@ -95,28 +112,44 @@ export default function Login() {
       });
 
       if (isAdmin) {
-        // ✅ IMPORTANT: Save token for Admin.jsx (it reads admin_token)
-        if (data?.token) localStorage.setItem("admin_token", data.token);
+        // ✅ Admin token (same logic)
+        const adminToken = extractToken(data);
+        if (adminToken) localStorage.setItem("admin_token", adminToken);
 
-        // ✅ Save admin in auth context with role=admin (for AdminRoute)
-        const adminObj = data.admin || {};
+        // keep clean for user token
+        localStorage.removeItem("token");
+
+        const adminObj = data.admin || data.user || {};
         login({ ...adminObj, role: "admin" });
 
-        openModal("success", "Admin Login Success", data?.message || "Logged in successfully ✅");
+        openModal(
+          "success",
+          "Admin Login Success",
+          data?.message || "Logged in successfully ✅"
+        );
 
-        setTimeout(() => {
-          navigate("/admin", { replace: true });
-        }, 600);
+        setTimeout(() => navigate("/admin", { replace: true }), 600);
       } else {
-        // ✅ user login same as before
-        localStorage.removeItem("admin_token"); // optional: avoid using old admin token in user session
+        // ✅ USER token save (fix)
+        localStorage.removeItem("admin_token");
+
+        const userToken = extractToken(data);
+        if (userToken) localStorage.setItem("token", userToken);
+        else {
+          // If backend truly doesn't return token, keep clean
+          localStorage.removeItem("token");
+        }
+
+        // ✅ keep same login call
         login(data.user);
 
-        openModal("success", "Login Success", data?.message || "Logged in successfully ✅");
+        openModal(
+          "success",
+          "Login Success",
+          data?.message || "Logged in successfully ✅"
+        );
 
-        setTimeout(() => {
-          navigate("/dashboard", { replace: true });
-        }, 600);
+        setTimeout(() => navigate("/dashboard", { replace: true }), 600);
       }
     } catch (err) {
       openModal(
@@ -134,7 +167,6 @@ export default function Login() {
       <style>{css}</style>
       <div className="bg" />
 
-      {/* Modal */}
       {modal.open && (
         <div className="mb" onClick={closeModal}>
           <div className="mc" onClick={(e) => e.stopPropagation()}>
@@ -159,13 +191,10 @@ export default function Login() {
           <div className="head">
             <h2 className="title">{isAdmin ? "Admin Login" : "Login"}</h2>
             <p className="sub">
-              {isAdmin
-                ? "Admin access • Secure Sign-in"
-                : "Welcome back • Secure Sign-in"}
+              {isAdmin ? "Admin access • Secure Sign-in" : "Welcome back • Secure Sign-in"}
             </p>
           </div>
 
-          {/* Toggle */}
           <div className="modeRow">
             <span className={`modeTag ${!isAdmin ? "on" : ""}`}>User</span>
             <button
@@ -180,8 +209,7 @@ export default function Login() {
 
           <div className="field">
             <label className="label">
-              {isAdmin ? "Admin Email" : "Email / Mobile"}{" "}
-              <span className="req">*</span>
+              {isAdmin ? "Admin Email" : "Email / Mobile"} <span className="req">*</span>
             </label>
             <input
               className={`input ${errors.username ? "err" : ""}`}
@@ -231,7 +259,7 @@ export default function Login() {
   );
 }
 
-/* ✅ SAME CSS (unchanged) */
+/* ✅ FULL CSS (same as your file) */
 const css = `
   :root{
     --txt:#0b1220;

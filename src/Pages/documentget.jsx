@@ -2,87 +2,51 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function DocumentGet() {
-  const API_BASE = "https://express-projectrandom.onrender.com";
   const navigate = useNavigate();
 
-  const [docs, setDocs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [q, setQ] = useState("");
-
-  // ✅ Logged-in user (from localStorage)
-  const auth = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("auth_user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const userId =
-    auth?.id ??
-    auth?.user_id ??
-    auth?.user?.id ??
-    auth?.user?.user_id ??
-    auth?.uid ??
-    null;
+  const API_BASE = "https://express-projectrandom.onrender.com";
+  const DOCS_URL = `${API_BASE}/api/documents`;
 
   const token =
-    auth?.token ??
-    auth?.access_token ??
-    auth?.jwt ??
-    auth?.user?.token ??
-    null;
+    localStorage.getItem("token") ||
+    localStorage.getItem("user_token") ||
+    sessionStorage.getItem("token") ||
+    "";
 
-  // ✅ If user not logged in -> go login
-  useEffect(() => {
-    if (!userId) navigate("/login", { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  const PAGE_SIZE = 10;
 
-  // ✅ headers helper (token preferred, else x-user-id fallback)
-  const authHeaders = useMemo(() => {
-    const h = {};
-    if (token) h.Authorization = `Bearer ${token}`;
-    else if (userId) h["x-user-id"] = String(userId); // fallback if no JWT
-    return h;
-  }, [token, userId]);
+  const [loading, setLoading] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
-  // Center modal (alert/confirm)
-  const [modal, setModal] = useState({
-    open: false,
-    type: "info", // info | success | error | confirm
-    title: "",
-    message: "",
-    onConfirm: null,
-    confirmText: "Yes",
-    cancelText: "Cancel",
-  });
-
-  const openModal = (cfg) =>
-    setModal({
-      open: true,
-      type: cfg.type || "info",
-      title: cfg.title || "",
-      message: cfg.message || "",
-      onConfirm: cfg.onConfirm || null,
-      confirmText: cfg.confirmText || "Yes",
-      cancelText: cfg.cancelText || "Cancel",
-    });
-
-  const closeModal = () => setModal((p) => ({ ...p, open: false, onConfirm: null }));
-
-  // Edit modal
+  // update modal
   const [editOpen, setEditOpen] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState(null);
-
+  const [editDoc, setEditDoc] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editFile, setEditFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  // delete confirm
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteDoc, setDeleteDoc] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // center modal popup
+  const [modal, setModal] = useState({
+    open: false,
+    type: "info", // success | error | info
+    title: "",
+    message: "",
+  });
+  const openModal = (type, title, message) =>
+    setModal({ open: true, type, title, message });
+  const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
   const prettySize = useMemo(
     () => (bytes) => {
-      if (!bytes && bytes !== 0) return "-";
+      if (bytes === null || bytes === undefined) return "-";
       const units = ["B", "KB", "MB", "GB"];
       let i = 0;
       let n = Number(bytes);
@@ -95,806 +59,733 @@ export default function DocumentGet() {
     []
   );
 
-  const formatIndia = useMemo(
-    () => (iso) => {
-      if (!iso) return "-";
-      try {
-        return new Date(iso).toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      } catch {
-        return String(iso);
-      }
-    },
-    []
-  );
-
-  const fileIcon = useMemo(
-    () => (ext = "", mime = "") => {
-      const e = String(ext || "").toLowerCase();
-      const m = String(mime || "").toLowerCase();
-
-      if (e === "pdf" || m.includes("pdf")) return { emoji: "📕", label: "PDF" };
-      if (["jpg", "jpeg", "png", "webp", "gif", "bmp", "svg"].includes(e) || m.startsWith("image/"))
-        return { emoji: "🖼️", label: "IMAGE" };
-      if (["doc", "docx"].includes(e)) return { emoji: "📝", label: "WORD" };
-      if (["xls", "xlsx"].includes(e)) return { emoji: "📊", label: "EXCEL" };
-      if (["csv"].includes(e)) return { emoji: "🧾", label: "CSV" };
-      if (["txt"].includes(e)) return { emoji: "📄", label: "TEXT" };
-      if (["js", "ts", "jsx", "tsx", "json", "html", "css", "py", "java", "c", "cpp", "php", "go", "rs"].includes(e))
-        return { emoji: "💻", label: "CODE" };
-      if (["zip", "rar", "7z"].includes(e)) return { emoji: "🗜️", label: "ZIP" };
-      return { emoji: "📁", label: (e || "FILE").toUpperCase() };
-    },
-    []
-  );
-
-  const canPreviewInBrowser = (doc) => {
-    const ext = String(doc.file_ext || "").toLowerCase();
-    const mime = String(doc.mime_type || "").toLowerCase();
-    if (ext === "pdf" || mime.includes("pdf")) return true;
-    if (mime.startsWith("image/")) return true;
-    if (["jpg", "jpeg", "png", "webp", "gif", "bmp", "svg"].includes(ext)) return true;
-    return false;
+  const formatDate = (v) => {
+    if (!v) return "-";
+    try {
+      return new Date(v).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return String(v);
+    }
   };
 
-  // ✅ secure fetch list (NO user_id param)
-  const fetchDocs = async () => {
-    if (!userId) return;
+  const fileBadge = (doc) => {
+    const ext = String(doc?.file_ext || "").toLowerCase().replace(".", "");
+    const mt = String(doc?.mime_type || "").toLowerCase();
+    const name = String(doc?.original_name || "").toLowerCase();
+    const is = (...arr) => arr.includes(ext);
 
+    if (
+      mt.startsWith("image/") ||
+      is("png", "jpg", "jpeg", "webp", "gif", "bmp", "svg")
+    )
+      return { icon: "🖼️", label: "IMAGE", tone: "img" };
+    if (ext === "pdf" || mt.includes("pdf"))
+      return { icon: "📕", label: "PDF", tone: "pdf" };
+    if (is("xls", "xlsx", "csv") || mt.includes("spreadsheet") || name.endsWith(".csv"))
+      return { icon: "📊", label: "EXCEL", tone: "xls" };
+    if (is("doc", "docx") || mt.includes("word"))
+      return { icon: "📝", label: "WORD", tone: "doc" };
+    if (is("ppt", "pptx") || mt.includes("presentation"))
+      return { icon: "📽️", label: "PPT", tone: "ppt" };
+    if (
+      mt.startsWith("text/") ||
+      is("txt", "md", "json", "js", "ts", "jsx", "tsx", "html", "css", "sql", "xml", "yml", "yaml")
+    )
+      return { icon: "💻", label: "TEXT", tone: "txt" };
+    if (is("zip", "rar", "7z", "tar", "gz"))
+      return { icon: "🗜️", label: "ZIP", tone: "zip" };
+    if (mt.startsWith("video/") || is("mp4", "mov", "mkv", "avi", "webm"))
+      return { icon: "🎬", label: "VIDEO", tone: "vid" };
+    if (mt.startsWith("audio/") || is("mp3", "wav", "m4a", "aac"))
+      return { icon: "🎵", label: "AUDIO", tone: "aud" };
+
+    return { icon: "📄", label: "FILE", tone: "file" };
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+        setEditOpen(false);
+        setDeleteOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      openModal("error", "Login Required", "Please login first to view your documents.");
+      setTimeout(() => navigate("/login", { replace: true }), 700);
+      return;
+    }
+    fetchDocs(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const authHeaders = (extra = {}) => ({
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  });
+
+  const handle401 = (msg = "Session expired. Please login again.") => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user_token");
+    sessionStorage.removeItem("token");
+    openModal("error", "Unauthorized", msg);
+    setTimeout(() => navigate("/login", { replace: true }), 700);
+  };
+
+  const safeJson = async (res) => {
+    const raw = await res.text();
+    try {
+      return { data: JSON.parse(raw), raw };
+    } catch {
+      return { data: null, raw };
+    }
+  };
+
+  const fetchDocs = async (newPage = 1) => {
     try {
       setLoading(true);
+      const url = q.trim() ? `${DOCS_URL}?q=${encodeURIComponent(q.trim())}` : DOCS_URL;
 
-      const baseUrl = q.trim()
-        ? `${API_BASE}/api/documents?q=${encodeURIComponent(q.trim())}`
-        : `${API_BASE}/api/documents`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: authHeaders(),
+        credentials: "include",
+      });
 
-      const res = await fetch(baseUrl, { headers: authHeaders });
-      const text = await res.text();
+      const { data, raw } = await safeJson(res);
 
-      let data = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      if (res.status === 401) return handle401(data?.message || "Unauthorized");
+      if (!res.ok) throw new Error(data?.message || raw || `HTTP ${res.status}`);
 
-      if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
-
-      const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-      setDocs(list); // ✅ backend already returns only logged user docs
+      setDocs(Array.isArray(data) ? data : []);
+      setPage(newPage);
     } catch (e) {
-      openModal({ type: "error", title: "Load Failed", message: e.message || "Server error" });
+      openModal("error", "Load Failed", e?.message || "Server error");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDocs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const totalPages = useMemo(() => {
+    const n = Math.ceil(docs.length / PAGE_SIZE);
+    return n === 0 ? 1 : n;
+  }, [docs.length]);
 
-  // ✅ Download with headers (window.open cannot send headers)
-  const downloadWithAuth = async (doc, openInNewTab = false) => {
+  const pageDocs = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return docs.slice(start, start + PAGE_SIZE);
+  }, [docs, page]);
+
+  const downloadDoc = async (doc) => {
     try {
-      const url = `${API_BASE}/api/documents/${doc.id}/download`;
-      const res = await fetch(url, { headers: authHeaders });
+      if (!doc?.id) return;
 
+      const res = await fetch(`${DOCS_URL}/${doc.id}/download`, {
+        method: "GET",
+        headers: authHeaders(),
+        credentials: "include",
+      });
+
+      if (res.status === 401) return handle401("Session expired. Please login again.");
       if (!res.ok) {
-        const text = await res.text();
-        let data = null;
-        try {
-          data = JSON.parse(text);
-        } catch {}
-        throw new Error(data?.message || text || `HTTP ${res.status}`);
+        const { data, raw } = await safeJson(res);
+        throw new Error(data?.message || raw || `Download failed (HTTP ${res.status})`);
       }
 
       const blob = await res.blob();
-      const fileName = doc.original_name || `document_${doc.id}.${doc.file_ext || "file"}`;
+      const filename =
+        doc.original_name || `${doc.document_title || "document"}.${doc.file_ext || "bin"}`;
 
-      const blobUrl = URL.createObjectURL(blob);
-
-      if (openInNewTab) {
-        window.open(blobUrl, "_blank", "noopener,noreferrer");
-        // keep url for tab
-      } else {
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(blobUrl);
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (e) {
-      openModal({ type: "error", title: "Download Failed", message: e.message || "Server error" });
+      openModal("error", "Download Failed", e?.message || "Server error");
     }
   };
 
-  const onView = (doc) => {
-    if (!canPreviewInBrowser(doc)) return;
-    downloadWithAuth(doc, true);
-  };
-
-  const onDownload = (doc) => {
-    downloadWithAuth(doc, false);
-  };
-
-  // ✅ Open edit modal
   const openEdit = (doc) => {
-    setSelectedDoc(doc);
-    setEditTitle(doc.document_title || "");
-    setEditDesc(doc.short_desc || "");
+    setEditDoc(doc);
+    setEditTitle(doc?.document_title || "");
+    setEditDesc(doc?.short_desc || "");
     setEditFile(null);
     setEditOpen(true);
   };
 
-  const closeEdit = () => {
-    if (editLoading) return;
-    setEditOpen(false);
-    setSelectedDoc(null);
-    setEditFile(null);
-  };
-
-  // ✅ UPDATE (multipart/form-data)
-  const submitUpdate = async (e) => {
-    e.preventDefault();
-    if (!selectedDoc?.id) return;
+  const saveEdit = async () => {
+    if (!editDoc?.id) return;
+    if (!editTitle.trim()) {
+      openModal("error", "Missing Title", "Document title is required.");
+      return;
+    }
 
     try {
-      setEditLoading(true);
+      setSaving(true);
 
       const fd = new FormData();
-      if (editTitle.trim()) fd.append("document_title", editTitle.trim());
-      fd.append("short_desc", editDesc ?? "");
+      fd.append("document_title", editTitle.trim());
+      fd.append("short_desc", editDesc.trim());
       if (editFile) fd.append("file", editFile);
 
-      const res = await fetch(`${API_BASE}/api/documents/${selectedDoc.id}`, {
+      const res = await fetch(`${DOCS_URL}/${editDoc.id}`, {
         method: "PUT",
-        headers: authHeaders,
+        headers: authHeaders(),
         body: fd,
+        credentials: "include",
       });
 
-      const text = await res.text();
-      let data = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      const { data, raw } = await safeJson(res);
+      if (res.status === 401) return handle401(data?.message || "Unauthorized");
+      if (!res.ok) throw new Error(data?.message || raw || `HTTP ${res.status}`);
 
-      if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
-
+      openModal("success", "Updated", data?.message || "Document updated ✅");
       setEditOpen(false);
-      setSelectedDoc(null);
-      setEditFile(null);
-
-      openModal({ type: "success", title: "Updated", message: data?.message || "Updated successfully" });
-      await fetchDocs();
-    } catch (e2) {
-      openModal({ type: "error", title: "Update Failed", message: e2.message || "Server error" });
+      await fetchDocs(page);
+    } catch (e) {
+      openModal("error", "Update Failed", e?.message || "Server error");
     } finally {
-      setEditLoading(false);
+      setSaving(false);
     }
   };
 
-  // ✅ DELETE confirm + delete
-  const askDelete = (doc) => {
-    openModal({
-      type: "confirm",
-      title: "Delete Document?",
-      message: `Are you sure you want to delete "${doc.document_title}"?\nThis cannot be undone.`,
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: async () => {
-        closeModal();
-        await doDelete(doc.id);
-      },
-    });
+  const openDelete = (doc) => {
+    setDeleteDoc(doc);
+    setDeleteOpen(true);
   };
 
-  const doDelete = async (id) => {
-    try {
-      setLoading(true);
+  const confirmDelete = async () => {
+    if (!deleteDoc?.id) return;
 
-      const res = await fetch(`${API_BASE}/api/documents/${id}`, {
+    try {
+      setDeleting(true);
+
+      const res = await fetch(`${DOCS_URL}/${deleteDoc.id}`, {
         method: "DELETE",
-        headers: authHeaders,
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        credentials: "include",
       });
 
-      const text = await res.text();
-      let data = null;
-      try {
-        data = JSON.parse(text);
-      } catch {}
+      const { data, raw } = await safeJson(res);
+      if (res.status === 401) return handle401(data?.message || "Unauthorized");
+      if (!res.ok) throw new Error(data?.message || raw || `HTTP ${res.status}`);
 
-      if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
+      openModal("success", "Deleted", data?.message || "Document deleted ✅");
+      setDeleteOpen(false);
 
-      openModal({ type: "success", title: "Deleted", message: data?.message || "Deleted successfully" });
-      await fetchDocs();
+      const nextDocs = docs.filter((x) => x.id !== deleteDoc.id);
+      setDocs(nextDocs);
+      const newTotal = Math.max(1, Math.ceil(nextDocs.length / PAGE_SIZE));
+      setPage((p) => Math.min(p, newTotal));
     } catch (e) {
-      openModal({ type: "error", title: "Delete Failed", message: e.message || "Server error" });
+      openModal("error", "Delete Failed", e?.message || "Server error");
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
+
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
-    <div className="dg">
+    <div id="docgetPage">
       <style>{css}</style>
-      <div className="bg" />
 
-      {/* ✅ CENTER MODAL */}
-      {modal.open ? (
-        <div className="mb" onClick={closeModal}>
-          <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
-            <h3 className="mt">{modal.title}</h3>
-            <p className="mm" style={{ whiteSpace: "pre-line" }}>
-              {modal.message}
-            </p>
-
-            {modal.type === "confirm" ? (
-              <div className="mRow">
-                <button className="mBtn ghost" type="button" onClick={closeModal}>
-                  {modal.cancelText}
-                </button>
-                <button className="mBtn danger" type="button" onClick={() => modal.onConfirm && modal.onConfirm()}>
-                  {modal.confirmText}
-                </button>
-              </div>
-            ) : (
-              <button className="mBtn" type="button" onClick={closeModal}>
-                OK
-              </button>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {/* ✅ EDIT MODAL */}
-      {editOpen ? (
-        <div className="mb" onClick={closeEdit}>
-          <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className="pill info">EDIT</div>
-            <h3 className="mt">Update Document</h3>
-
-            <form onSubmit={submitUpdate} className="form">
-              <label className="lbl">Title</label>
-              <input
-                className="inp"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Enter document title"
-                required
-              />
-
-              <label className="lbl">Short Description</label>
-              <textarea
-                className="ta"
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                placeholder="Enter short description (optional)"
-                rows={3}
-              />
-
-              <label className="lbl">Replace File (optional)</label>
-              <input className="inp" type="file" onChange={(e) => setEditFile(e.target.files?.[0] || null)} />
-
-              <div className="mRow" style={{ marginTop: 12 }}>
-                <button className="mBtn ghost" type="button" onClick={closeEdit} disabled={editLoading}>
-                  Cancel
-                </button>
-                <button className="mBtn" type="submit" disabled={editLoading}>
-                  {editLoading ? "Updating..." : "Update"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="card">
-        <div className="head">
-          <div className="hleft">
-            <h2 className="title">My Documents</h2>
-            <p className="sub">Only your uploaded documents are visible here.</p>
-          </div>
-
-          <div className="actions">
-            <input className="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title..." />
-            <button className="btn2" type="button" onClick={fetchDocs} disabled={loading}>
-              {loading ? "Loading..." : "Search"}
+      {/* Center Alert Modal */}
+      {modal.open && (
+        <div className="dg_mb" onClick={closeModal}>
+          <div className="dg_mc" onClick={(e) => e.stopPropagation()}>
+            <div className={`dg_pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
+            <h3 className="dg_mt">{modal.title}</h3>
+            <p className="dg_mm">{modal.message}</p>
+            <button className="dg_mBtn" onClick={closeModal} type="button">
+              OK
             </button>
           </div>
         </div>
+      )}
 
-        <div className="listWrap">
-          {loading ? (
-            <div className="loading">
-              <div className="spinner" />
-              Loading...
+      {/* Update Modal */}
+      {editOpen && (
+        <div className="dg_mb" onClick={() => setEditOpen(false)}>
+          <div className="dg_mc dg_wide" onClick={(e) => e.stopPropagation()}>
+            <div className="dg_modalTop">
+              <div>
+                <div className="dg_modalTitle">Update Document</div>
+                <div className="dg_modalSub">Edit title/description (optional file replace)</div>
+              </div>
+              <button className="dg_x" onClick={() => setEditOpen(false)} type="button">
+                ✕
+              </button>
             </div>
-          ) : docs.length === 0 ? (
-            <div className="empty">
-              No documents found.
-              <div className="emptyLink" onClick={() => navigate("/dashboard/document")}>
-                Upload new document
+
+            <div className="dg_field">
+              <label className="dg_label">
+                Title <span className="dg_req">*</span>
+              </label>
+              <input
+                className="dg_input2"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Document title"
+                autoFocus
+              />
+            </div>
+
+            <div className="dg_field">
+              <label className="dg_label">Description (Optional)</label>
+              <textarea
+                className="dg_textarea"
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Short description"
+              />
+            </div>
+
+            <div className="dg_field">
+              <label className="dg_label">Replace File (Optional)</label>
+              <input
+                className="dg_file"
+                type="file"
+                onChange={(e) => setEditFile(e.target.files?.[0] || null)}
+              />
+              <div className="dg_mini2">
+                {editFile ? (
+                  <>
+                    Selected: <b>{editFile.name}</b> • {prettySize(editFile.size)}
+                  </>
+                ) : (
+                  "No file selected"
+                )}
               </div>
             </div>
+
+            <div className="dg_btnRow">
+              <button className="dg_btn dg_ghost" onClick={() => setEditOpen(false)} type="button">
+                Cancel
+              </button>
+              <button className="dg_btn dg_primary" onClick={saveEdit} disabled={saving} type="button">
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteOpen && (
+        <div className="dg_mb" onClick={() => setDeleteOpen(false)}>
+          <div className="dg_mc" onClick={(e) => e.stopPropagation()}>
+            <div className="dg_modalTop">
+              <div>
+                <div className="dg_modalTitle">Delete Document</div>
+                <div className="dg_modalSub">This action cannot be undone.</div>
+              </div>
+              <button className="dg_x" onClick={() => setDeleteOpen(false)} type="button">
+                ✕
+              </button>
+            </div>
+
+            <div className="dg_confirmBox">
+              Are you sure you want to delete:
+              <div className="dg_confirmName">{deleteDoc?.document_title || "Untitled"}</div>
+            </div>
+
+            <div className="dg_btnRow">
+              <button className="dg_btn dg_ghost" onClick={() => setDeleteOpen(false)} type="button">
+                Cancel
+              </button>
+              <button className="dg_btn dg_danger" onClick={confirmDelete} disabled={deleting} type="button">
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Page Content (upload removed) */}
+      <div className="dg_shell">
+        <div className="dg_head">
+          <div className="dg_title">My Documents</div>
+        </div>
+
+        <div className="dg_searchRow">
+          <input
+            className="dg_searchInput"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search document name..."
+            onKeyDown={(e) => e.key === "Enter" && fetchDocs(1)}
+          />
+          <button className="dg_btn dg_ghost" onClick={() => fetchDocs(1)} disabled={loading} type="button">
+            {loading ? "..." : "Go"}
+          </button>
+        </div>
+
+        <div className="dg_list">
+          {loading ? (
+            <div className="dg_empty">Loading...</div>
+          ) : pageDocs.length === 0 ? (
+            <div className="dg_empty">No documents found.</div>
           ) : (
-            <div className="grid">
-              {docs.map((d) => {
-                const ic = fileIcon(d.file_ext, d.mime_type);
-                const previewable = canPreviewInBrowser(d);
+            pageDocs.map((d) => {
+              const b = fileBadge(d);
+              return (
+                <div className="dg_card" key={d.id}>
+                  <div className="dg_cardBody">
+                    <div className="dg_docTitle">{d.document_title || "Untitled"}</div>
 
-                return (
-                  <div key={d.id} className="item">
-                    <div className="topRow">
-                      <div className="iconBox">
-                        <div className="emoji">{ic.emoji}</div>
-                        <div className="tag">{ic.label}</div>
-                      </div>
-
-                      <div className="titleBox">
-                        <div className="t1">{d.document_title}</div>
-                        {d.short_desc ? <div className="t2">{d.short_desc}</div> : <div className="t2 muted">No description</div>}
-                      </div>
+                    <div className="dg_meta">
+                      {d.original_name || "-"} • {prettySize(d.file_size_bytes)} • {formatDate(d.uploaded_at)}
                     </div>
 
-                    <div className="infoRow">
-                      <span className="chip">{prettySize(d.file_size_bytes)}</span>
-                      <span className="chip">{(d.file_ext || "file").toUpperCase()}</span>
-                      <span className="chip">{formatIndia(d.uploaded_at)}</span>
-                      {d.mime_type ? <span className="chip">{d.mime_type}</span> : null}
-                    </div>
+                    {d.short_desc ? <div className="dg_desc">{d.short_desc}</div> : null}
 
-                    <div className="btnRow">
-                      <button
-                        className={`view ${previewable ? "" : "disabled"}`}
-                        type="button"
-                        onClick={() => onView(d)}
-                        disabled={!previewable}
-                        title={previewable ? "Preview in new tab" : "Preview not supported for this file type"}
-                      >
-                        View
-                      </button>
-
-                      <button className="down" type="button" onClick={() => onDownload(d)}>
+                    <div className="dg_actions">
+                      <button className="dg_mini dg_down" onClick={() => downloadDoc(d)} type="button">
                         Download
                       </button>
-
-                      <button className="edit" type="button" onClick={() => openEdit(d)}>
+                      <button className="dg_mini dg_edit" onClick={() => openEdit(d)} type="button">
                         Update
                       </button>
-
-                      <button className="del" type="button" onClick={() => askDelete(d)}>
+                      <button className="dg_mini dg_del" onClick={() => openDelete(d)} type="button">
                         Delete
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="dg_cardSide">
+                    <div className={`dg_badge ${b.tone}`}>
+                      <div className="dg_ico">{b.icon}</div>
+                      <div className="dg_lbl">{b.label}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
-        <div className="links">
-          <span className="link" onClick={() => navigate("/dashboard")}>
-            Back to Dashboard
-          </span>
+        <div className="dg_pager">
+          <button className="dg_btn dg_ghost" onClick={goPrev} disabled={page <= 1 || loading} type="button">
+            Prev
+          </button>
+          <div className="dg_ptext">
+            Page <b>{page}</b> / <b>{totalPages}</b> • Total <b>{docs.length}</b>
+          </div>
+          <button className="dg_btn dg_ghost" onClick={goNext} disabled={page >= totalPages || loading} type="button">
+            Next
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ✅ SAME CSS as your page (unchanged styling) */
 const css = `
-  :root{
-    --txt:#0b1220;
-    --muted:rgba(11,18,32,.65);
-    --card:rgba(255,255,255,.90);
-    --shadow: 0 26px 80px rgba(0,0,0,.18);
+  /* ✅ ONLY inside this page */
+  #docgetPage { width:100%; }
+
+  #docgetPage *{ box-sizing:border-box; }
+
+  #docgetPage .dg_shell{
+    width:100%;
+    background:#f7f8fb;
+    padding:0; margin:0;
   }
 
-  .dg{
-    min-height:100vh;
-    width:100%;
-    position:relative;
-    overflow-x:hidden;
-    overflow-y:auto;
+  /* desktop fit, tabs unaffected because scoped */
+  @media (min-width: 900px){
+    #docgetPage .dg_shell{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 12px;
+    }
+  }
+
+  #docgetPage .dg_head{
+    padding:12px;
+    background:#fff;
+    border:1px solid rgba(11,18,32,.10);
+    border-left:none; border-right:none;
+  }
+  @media (min-width:900px){
+    #docgetPage .dg_head{ border-radius:16px; border:1px solid rgba(11,18,32,.10); margin-top:12px; }
+  }
+
+  #docgetPage .dg_title{
+    font-size:16px;
+    font-weight:1100;
+    color:#0b1220;
+  }
+
+  #docgetPage .dg_searchRow{
     display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    padding:20px;
-    box-sizing:border-box;
+    gap:10px;
+    padding:12px;
+    background:#fff;
+    border-bottom:1px solid rgba(11,18,32,.10);
+  }
+  @media (min-width:900px){
+    #docgetPage .dg_searchRow{
+      border:1px solid rgba(11,18,32,.10);
+      border-radius:16px;
+      margin-top:10px;
+    }
   }
 
-  .bg{
-    position:fixed; inset:0;
-    background:
-      radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .22), transparent 60%),
-      radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .18), transparent 58%),
-      radial-gradient(1000px 650px at 50% 92%, rgba(0, 255, 150, .15), transparent 60%),
-      linear-gradient(135deg, #fffbeb 0%, #eff6ff 34%, #ecfeff 67%, #f0fdf4 100%);
-    z-index:0; pointer-events:none;
-  }
-
-  .card{
+  #docgetPage .dg_searchInput{
+    flex:1;
     width:100%;
-    max-width: 980px;
-    background:var(--card);
-    border:1px solid rgba(255,255,255,.55);
-    border-radius:22px;
-    padding:22px;
-    box-shadow:var(--shadow);
-    backdrop-filter: blur(14px);
-    z-index:1;
-    box-sizing:border-box;
+    padding:12px;
+    border-radius:14px;
+    border:1px solid rgba(11,18,32,.10);
+    outline:none;
+    font-weight:900;
+    font-size:14px;
+    background:#fff;
   }
 
-  .head{
+  #docgetPage .dg_btn{
+    border:none;
+    padding:12px 14px;
+    border-radius:14px;
+    font-weight:1100;
+    cursor:pointer;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  #docgetPage .dg_btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+  #docgetPage .dg_ghost{
+    background:rgba(124,58,237,.10);
+    border:1px solid rgba(124,58,237,.18);
+    color:#4c1d95;
+  }
+  #docgetPage .dg_primary{
+    color:#081018;
+    background:linear-gradient(90deg,#fde047 0%,#fb7185 40%,#60a5fa 70%,#34d399 100%);
+    box-shadow:0 10px 24px rgba(0,0,0,.10);
+  }
+  #docgetPage .dg_danger{
+    background:rgba(255,45,85,.12);
+    border:1px solid rgba(255,45,85,.18);
+    color:#9f1239;
+  }
+
+  #docgetPage .dg_list{
+    padding:10px 0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  #docgetPage .dg_card{
+    width:100%;
+    background:#fff;
+    box-shadow:0 10px 26px rgba(0,0,0,.10);
+    padding:12px;
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    border-top:1px solid rgba(11,18,32,.10);
+    border-bottom:1px solid rgba(11,18,32,.10);
+  }
+  @media (min-width:900px){
+    #docgetPage .dg_card{
+      border:1px solid rgba(11,18,32,.10);
+      border-radius:18px;
+    }
+  }
+
+  #docgetPage .dg_cardBody{ flex:1; min-width:0; }
+  #docgetPage .dg_docTitle{
+    font-weight:1200;
+    color:rgba(11,18,32,.92);
+    font-size:16px;
+    line-height:1.25;
+    word-break:break-word;
+  }
+  #docgetPage .dg_meta{
+    margin-top:6px;
+    font-weight:900;
+    color:rgba(11,18,32,.60);
+    font-size:12px;
+    word-break:break-word;
+  }
+  #docgetPage .dg_desc{
+    margin-top:8px;
+    font-weight:900;
+    color:rgba(11,18,32,.78);
+    font-size:12px;
+    line-height:1.35;
+    word-break:break-word;
+  }
+  #docgetPage .dg_actions{
+    margin-top:10px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  #docgetPage .dg_mini{
+    border:none;
+    padding:10px 12px;
+    border-radius:12px;
+    font-weight:1100;
+    cursor:pointer;
+    font-size:12px;
+  }
+  #docgetPage .dg_down{ background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.20); color:#065f46; }
+  #docgetPage .dg_edit{ background:rgba(124,58,237,.10); border:1px solid rgba(124,58,237,.18); color:#4c1d95; }
+  #docgetPage .dg_del{ background:rgba(255,45,85,.12); border:1px solid rgba(255,45,85,.18); color:#9f1239; }
+
+  #docgetPage .dg_cardSide{ width:82px; flex:0 0 auto; display:flex; justify-content:flex-end; }
+  #docgetPage .dg_badge{
+    width:82px;
+    padding:10px 8px;
+    border-radius:16px;
+    border:1px solid rgba(11,18,32,.10);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    user-select:none;
+  }
+  #docgetPage .dg_ico{ font-size:20px; }
+  #docgetPage .dg_lbl{ font-size:11px; font-weight:1100; letter-spacing:.3px; }
+
+  #docgetPage .dg_badge.pdf{ background:rgba(239,68,68,.10); color:#991b1b; border-color:rgba(239,68,68,.18); }
+  #docgetPage .dg_badge.img{ background:rgba(34,197,94,.10); color:#065f46; border-color:rgba(34,197,94,.18); }
+  #docgetPage .dg_badge.xls{ background:rgba(59,130,246,.10); color:#1e3a8a; border-color:rgba(59,130,246,.18); }
+  #docgetPage .dg_badge.doc{ background:rgba(99,102,241,.10); color:#312e81; border-color:rgba(99,102,241,.18); }
+  #docgetPage .dg_badge.ppt{ background:rgba(245,158,11,.10); color:#7c2d12; border-color:rgba(245,158,11,.18); }
+  #docgetPage .dg_badge.txt{ background:rgba(107,114,128,.10); color:#111827; border-color:rgba(107,114,128,.18); }
+  #docgetPage .dg_badge.zip{ background:rgba(168,85,247,.10); color:#581c87; border-color:rgba(168,85,247,.18); }
+  #docgetPage .dg_badge.vid{ background:rgba(14,165,233,.10); color:#0c4a6e; border-color:rgba(14,165,233,.18); }
+  #docgetPage .dg_badge.aud{ background:rgba(236,72,153,.10); color:#831843; border-color:rgba(236,72,153,.18); }
+  #docgetPage .dg_badge.file{ background:rgba(148,163,184,.18); color:#0f172a; border-color:rgba(148,163,184,.22); }
+
+  #docgetPage .dg_empty{
+    width:100%;
+    padding:18px 12px;
+    text-align:center;
+    font-weight:1000;
+    color:rgba(11,18,32,.60);
+  }
+
+  #docgetPage .dg_pager{
     display:flex;
     justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
-    align-items:flex-start;
-    margin-bottom: 14px;
-  }
-  .hleft{ min-width:0; }
-
-  .title{
-    margin:0;
-    font-weight:1000;
-    color:var(--txt);
-    font-size: clamp(20px, 3.2vw, 30px);
-    word-break: break-word;
-  }
-  .sub{
-    margin:8px 0 0;
-    color:var(--muted);
-    font-weight:800;
-    font-size: clamp(12px, 1.8vw, 14px);
-    word-break: break-word;
-  }
-
-  .actions{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
     align-items:center;
-    justify-content:flex-end;
-    width: min(520px, 100%);
-  }
-
-  .search{
-    flex: 1 1 220px;
-    min-width: 180px;
-    padding: 12px 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(17,24,39,.10);
-    outline:none;
-    font-weight: 900;
-    background: rgba(255,255,255,.75);
-  }
-  .search:focus{
-    border-color: rgba(124,58,237,.35);
-    box-shadow: 0 0 0 5px rgba(124,58,237,.12);
-  }
-
-  .btn2{
-    border:none;
-    padding: 12px 14px;
-    border-radius: 16px;
-    cursor:pointer;
-    color:#fff;
-    font-weight:1000;
-    background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 55%, #22c55e 100%);
-    box-shadow: 0 14px 30px rgba(124,58,237,.18);
-    white-space: nowrap;
-  }
-  .btn2:disabled{ opacity:.75; cursor:not-allowed; }
-
-  .listWrap{ margin-top: 10px; }
-  .loading{
-    display:flex;
     gap:10px;
-    align-items:center;
-    justify-content:center;
-    padding: 26px;
-    font-weight: 950;
-    color: rgba(11,18,32,.70);
+    padding:12px;
+    background:#fff;
+    border-top:1px solid rgba(11,18,32,.10);
   }
-  .spinner{
-    width: 16px; height: 16px;
-    border-radius: 999px;
-    border: 3px solid rgba(11,18,32,.15);
-    border-top-color: rgba(124,58,237,.65);
-    animation: spin 1s linear infinite;
+  @media (min-width:900px){
+    #docgetPage .dg_pager{
+      border:1px solid rgba(11,18,32,.10);
+      border-radius:16px;
+      margin: 10px 0 14px;
+    }
   }
-  @keyframes spin{ to{ transform: rotate(360deg); } }
-
-  .empty{
-    padding: 22px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.65);
-    border: 1px solid rgba(17,24,39,.08);
+  #docgetPage .dg_ptext{
+    font-size:12px;
+    font-weight:950;
+    color:rgba(11,18,32,.70);
     text-align:center;
-    font-weight: 950;
-    color: rgba(11,18,32,.70);
-  }
-  .emptyLink{
-    margin-top: 10px;
-    color:#7c3aed;
-    font-weight: 1000;
-    cursor:pointer;
-    text-decoration: underline;
+    flex:1;
   }
 
-  .grid{ display:grid; gap: 12px; }
-
-  .item{
-    display:flex;
-    flex-direction:column;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.72);
-    border: 1px solid rgba(17,24,39,.08);
-    box-shadow: 0 14px 34px rgba(0,0,0,.10);
-    animation: fadeIn .26s ease both;
-  }
-
-  .topRow{
-    display:flex;
-    align-items:flex-start;
-    gap: 12px;
-    min-width:0;
-  }
-
-  .iconBox{
-    width: 86px;
-    flex: 0 0 auto;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap: 6px;
-    border-radius: 18px;
-    background:
-      radial-gradient(220px 120px at 20% 20%, rgba(124,58,237,.14), transparent 60%),
-      radial-gradient(220px 120px at 80% 40%, rgba(6,182,212,.12), transparent 60%),
-      rgba(255,255,255,.60);
-    border: 1px solid rgba(124,58,237,.14);
-    padding: 10px 8px;
-  }
-
-  .emoji{ font-size: 26px; line-height: 1; }
-  .tag{
-    font-size: 11px;
-    font-weight: 1000;
-    color: rgba(11,18,32,.80);
-    background: rgba(17,24,39,.06);
-    border: 1px solid rgba(17,24,39,.08);
-    padding: 4px 8px;
-    border-radius: 999px;
-    text-align:center;
-  }
-
-  .titleBox{ min-width:0; }
-  .t1{
-    font-weight: 1100;
-    color: rgba(11,18,32,.92);
-    font-size: 15px;
-    word-break: break-word;
-    white-space: normal;
-  }
-  .t2{
-    margin-top: 4px;
-    font-weight: 850;
-    color: rgba(11,18,32,.68);
-    font-size: 13px;
-    word-break: break-word;
-    white-space: normal;
-  }
-  .t2.muted{ color: rgba(11,18,32,.55); }
-
-  .infoRow{
-    display:flex;
-    flex-wrap:wrap;
-    gap: 8px;
-  }
-  .chip{
-    font-size: 11px;
-    font-weight: 1000;
-    color: rgba(11,18,32,.72);
-    background: rgba(17,24,39,.06);
-    border: 1px solid rgba(17,24,39,.08);
-    padding: 6px 10px;
-    border-radius: 999px;
-    white-space: normal;
-    word-break: break-word;
-  }
-
-  .btnRow{
-    display:flex;
-    gap: 10px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
-  }
-
-  .view{
-    border:none;
-    padding: 10px 12px;
-    border-radius: 14px;
-    cursor:pointer;
-    font-weight: 1000;
-    background: rgba(17,24,39,.08);
-    color: #111827;
-    white-space: nowrap;
-  }
-  .view.disabled{
-    opacity: .45;
-    cursor: not-allowed;
-    filter: grayscale(1);
-  }
-
-  .down{
-    border:none;
-    padding: 10px 12px;
-    border-radius: 14px;
-    cursor:pointer;
-    font-weight: 1000;
-    color:#fff;
-    background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 55%, #22c55e 100%);
-    box-shadow: 0 14px 30px rgba(124,58,237,.18);
-    white-space: nowrap;
-  }
-
-  .edit{
-    border:none;
-    padding: 10px 12px;
-    border-radius: 14px;
-    cursor:pointer;
-    font-weight: 1000;
-    background: rgba(6,182,212,.14);
-    color: rgba(11,18,32,.92);
-    white-space: nowrap;
-  }
-
-  .del{
-    border:none;
-    padding: 10px 12px;
-    border-radius: 14px;
-    cursor:pointer;
-    font-weight: 1000;
-    background: rgba(255,45,85,.14);
-    color: #9f1239;
-    white-space: nowrap;
-  }
-
-  .links{
-    margin-top: 14px;
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
-    color: var(--muted);
-    font-weight:900;
-    font-size: 13px;
-  }
-  .link{
-    color:#7c3aed;
-    cursor:pointer;
-    text-decoration: underline;
-    font-weight:1000;
-  }
-
-  @keyframes fadeIn{ from{ opacity:0; transform: translateY(6px);} to{ opacity:1; transform: translateY(0);} }
-
-  /* ✅ MODALS CENTER */
-  .mb{
+  /* Modals - scoped */
+  #docgetPage .dg_mb{
     position:fixed; inset:0;
     display:flex; align-items:center; justify-content:center;
-    background: rgba(0,0,0,.42);
-    z-index: 9999;
-    padding: 16px;
-    box-sizing:border-box;
+    padding:16px;
+    background:rgba(0,0,0,.42);
+    z-index:9999;
   }
-  .mc{
+  #docgetPage .dg_mc{
     width:100%;
-    max-width: 520px;
-    background: rgba(255,255,255,.92);
-    border: 1px solid rgba(255,255,255,.60);
-    border-radius: 24px;
-    padding: 18px;
-    text-align:left;
-    box-shadow: 0 35px 95px rgba(0,0,0,.28);
+    max-width:520px;
+    background:rgba(255,255,255,.96);
+    border:1px solid rgba(255,255,255,.60);
+    border-radius:22px;
+    padding:16px;
+    box-shadow:0 35px 95px rgba(0,0,0,.28);
     backdrop-filter: blur(14px);
   }
-  .pill{
+  #docgetPage .dg_wide{ max-width:560px; }
+
+  #docgetPage .dg_pill{
     display:inline-block;
     padding:6px 12px;
     border-radius:999px;
-    font-weight:1000;
+    font-weight:1100;
     font-size:12px;
-    border: 1px solid rgba(0,0,0,.08);
+    border:1px solid rgba(0,0,0,.08);
     margin-bottom:10px;
-    background: rgba(124,58,237,.12);
-    color:#4c1d95;
   }
-  .pill.success{ background: rgba(34,197,94,.14); color:#0f5132; }
-  .pill.error{ background: rgba(255,45,85,.12); color:#9f1239; }
-  .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
-  .pill.confirm{ background: rgba(255,193,7,.14); color:#7c2d12; }
+  #docgetPage .dg_pill.success{ background:rgba(34,197,94,.14); color:#0f5132; }
+  #docgetPage .dg_pill.error{ background:rgba(255,45,85,.12); color:#9f1239; }
+  #docgetPage .dg_pill.info{ background:rgba(124,58,237,.12); color:#4c1d95; }
 
-  .mt{ margin:4px 0 6px; font-weight:1100; color:var(--txt); font-size:18px; }
-  .mm{ margin:0 0 14px; color: rgba(11,18,32,.78); font-weight:900; line-height:1.4; }
-
-  .mRow{ display:flex; gap:10px; justify-content:flex-end; }
-  .mBtn{
-    flex:1;
+  #docgetPage .dg_mt{ margin:4px 0 6px; font-weight:1100; color:rgba(11,18,32,.92); font-size:18px; }
+  #docgetPage .dg_mm{ margin:0 0 14px; color:rgba(11,18,32,.78); font-weight:950; line-height:1.4; }
+  #docgetPage .dg_mBtn{
+    width:100%;
     border:none;
     padding:12px 14px;
     border-radius:16px;
-    background: linear-gradient(90deg, #111827 0%, #334155 100%);
+    background:linear-gradient(90deg,#111827 0%,#334155 100%);
     color:#fff;
     font-weight:1100;
     cursor:pointer;
+  }
+
+  #docgetPage .dg_modalTop{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+  #docgetPage .dg_modalTitle{ font-weight:1100; color:rgba(11,18,32,.92); font-size:16px; }
+  #docgetPage .dg_modalSub{ margin-top:4px; font-weight:900; color:rgba(11,18,32,.62); font-size:12px; }
+  #docgetPage .dg_x{ border:none; background:rgba(11,18,32,.08); border:1px solid rgba(11,18,32,.10); border-radius:12px; padding:10px 12px; cursor:pointer; font-weight:1100; }
+
+  #docgetPage .dg_field{ margin-top:10px; display:flex; flex-direction:column; }
+  #docgetPage .dg_label{ font-size:12px; font-weight:1000; color:rgba(11,18,32,.85); margin-bottom:6px; }
+  #docgetPage .dg_req{ color:#ff2d55; }
+  #docgetPage .dg_input2{ width:100%; padding:12px; border-radius:14px; border:1px solid rgba(11,18,32,.10); background:#fff; outline:none; font-weight:900; font-size:14px; }
+  #docgetPage .dg_textarea{ width:100%; min-height:110px; padding:12px; border-radius:14px; border:1px solid rgba(11,18,32,.10); background:#fff; outline:none; font-weight:900; font-size:14px; resize:vertical; }
+  #docgetPage .dg_file{ width:100%; padding:12px; border-radius:14px; border:1px solid rgba(11,18,32,.10); background:#fff; }
+  #docgetPage .dg_mini2{ margin-top:8px; font-weight:900; font-size:12px; color:rgba(11,18,32,.62); }
+
+  #docgetPage .dg_btnRow{ margin-top:12px; display:flex; gap:10px; }
+  #docgetPage .dg_btnRow .dg_btn{ flex:1; }
+
+  #docgetPage .dg_confirmBox{
+    margin-top:10px;
+    padding:12px;
+    border-radius:16px;
+    background:#f8fafc;
+    border:1px solid rgba(11,18,32,.10);
+    font-weight:950;
+    color:rgba(11,18,32,.78);
     text-align:center;
   }
-  .mBtn.ghost{
-    background: rgba(17,24,39,.08);
-    color:#111827;
-  }
-  .mBtn.danger{
-    background: linear-gradient(90deg, #9f1239 0%, #ef4444 100%);
-  }
-
-  .form{ margin-top: 10px; }
-  .lbl{
-    display:block;
-    font-weight:1000;
-    color: rgba(11,18,32,.85);
-    margin: 10px 0 6px;
-    font-size: 13px;
-  }
-  .inp{
-    width:100%;
-    padding: 12px 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(17,24,39,.10);
-    outline:none;
-    font-weight: 900;
-    background: rgba(255,255,255,.75);
-    box-sizing:border-box;
-  }
-  .ta{
-    width:100%;
-    padding: 12px 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(17,24,39,.10);
-    outline:none;
-    font-weight: 900;
-    background: rgba(255,255,255,.75);
-    box-sizing:border-box;
-    resize: vertical;
-  }
-
-  @media (max-width: 720px){
-    .dg{ padding: 0; justify-content:flex-start; align-items:stretch; min-height:100vh; }
-    .card{
-      max-width:none; width:100%;
-      border-radius:0; border-left:0; border-right:0;
-      padding: 14px 12px; box-shadow:none;
-    }
-    .actions{ width:100%; justify-content:stretch; }
-    .search, .btn2{ width:100%; }
-    .btnRow{ justify-content:flex-start; }
-    .mb{ padding: 16px; }
-    .mc{ border-radius: 20px; }
-  }
+  #docgetPage .dg_confirmName{ margin-top:8px; font-weight:1100; color:rgba(11,18,32,.92); word-break:break-word; }
 `;
