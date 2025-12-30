@@ -709,8 +709,32 @@ const S = {
   amountValueDanger: { marginTop: 4, fontSize: 22, fontWeight: 950, color: "#b91c1c" },
   amountNote: { marginTop: 6, fontSize: 12, color: "#334155" },
 
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.25)", display: "grid", placeItems: "end center", padding: 14, zIndex: 50 },
-  modalCard: { width: "100%", maxWidth: 430, borderRadius: 20, background: "#ffffff", border: "1px solid #e2e8f0", boxShadow: "0 18px 60px rgba(15, 23, 42, 0.18)", padding: 14 },
+  modalOverlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.25)",
+  display: "grid",
+  placeItems: "center", // ✅ center
+  padding: 14,
+  paddingBottom: "calc(14px + env(safe-area-inset-bottom))", // ✅ bottom safe
+  zIndex: 50
+},
+
+  modalCard: {
+  width: "100%",
+  maxWidth: 430,
+  borderRadius: 20,
+  background: "#ffffff",
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 18px 60px rgba(15, 23, 42, 0.18)",
+  padding: 14,
+
+  // ✅ ensure modal fits mobile screen & buttons stay visible
+  maxHeight: "calc(100vh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+  overflow: "auto",
+  WebkitOverflowScrolling: "touch",
+},
+
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   modalTitle: { fontWeight: 950, fontSize: 15.5, color: "#0f172a" },
   modalSub: { marginTop: 3, fontSize: 12.5, color: "#334155" },
