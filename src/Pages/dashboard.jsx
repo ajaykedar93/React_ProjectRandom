@@ -17,6 +17,7 @@ export default function Dashboard() {
       { label: "Get Document", path: "/dashboard/documentget" },
       { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
       { label: "Get Text Docs", path: "/dashboard/gettextdoc" },
+       { label: "Notes", path: "/dashboard/notes" },
     ],
     []
   );
