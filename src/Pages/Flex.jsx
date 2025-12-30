@@ -472,9 +472,10 @@ function WalletIcon() {
 /* ===================== Styles (Black text; Red only for penalty/warning) ===================== */
 const S = {
   page: {
-    minHeight: "100vh",
-    padding: 14,
-    background: "linear-gradient(180deg, #ffffff 0%, #f3f7ff 60%, #ffffff 100%)",
+     minHeight: "100vh",
+  padding: 14,
+  paddingTop: "calc(18px + env(safe-area-inset-top))", // ✅ notch safe
+  background: "linear-gradient(180deg, #ffffff 0%, #f3f7ff 60%, #ffffff 100%)",
     fontFamily:
       "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
     color: "#0f172a",
@@ -530,7 +531,7 @@ const S = {
   },
   cardTop: { display: "flex", justifyContent: "space-between", gap: 10 },
   label: { fontSize: 12, fontWeight: 900, color: "#64748b" },
-  totalAmount: { fontSize: 26, fontWeight: 950, color: "#0f172a", marginTop: 3 },
+  totalAmount: { fontSize: 26, fontWeight: 950, color: "#dd1732ff", marginTop: 3 },
   subText: { marginTop: 6, fontSize: 12, color: "#334155" },
   pillOverdue: {
     padding: "7px 10px",
