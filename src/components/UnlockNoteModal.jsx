@@ -1,107 +1,202 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
-const API_BASE = "http://localhost:5000/api/notes";
+const API = "http://localhost:5000/api/notes";
 
-export default function UnlockNoteModal({ noteId, onClose, onUnlocked }) {
+export default function UnlockNoteModal({
+  open,
+  noteId,
+  noteTitle,
+  actionLabel = "Unlock",
+  onClose,
+  onSuccess, // (pin) => {}
+}) {
   const [pin, setPin] = useState("");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const unlock = async () => {
-    if (!pin || pin.length < 4) {
-      setToast("⚠️ Enter valid PIN (4+ digits)");
-      setTimeout(() => setToast(""), 2200);
+  const canSubmit = useMemo(() => /^\d{4}$/.test(pin), [pin]);
+
+  const showToast = (msg, ms = 2200) => {
+    setToast(msg);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(""), ms);
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setPin("");
+      setToast("");
+      setLoading(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const onEsc = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    if (open) window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [open, onClose]);
+
+  const verify = async () => {
+    if (!/^\d{4}$/.test(pin)) {
+      showToast("⚠️ PIN must be exactly 4 digits");
       return;
     }
 
     try {
       setLoading(true);
-      await axios.post(`${API_BASE}/${noteId}/unlock`, { pin });
-      setToast("✅ Unlocked");
+      await axios.post(`${API}/${noteId}/unlock`, { pin });
+      showToast("✅ PIN verified");
       setTimeout(() => {
-        setToast("");
-        onUnlocked(noteId);
-        onClose();
-      }, 700);
+        onSuccess?.(pin);
+        onClose?.();
+      }, 550);
     } catch (err) {
-      setToast("❌ Wrong PIN");
-      setTimeout(() => setToast(""), 2200);
+      showToast(err.response?.data?.error || "❌ Wrong PIN");
     } finally {
       setLoading(false);
     }
   };
 
+  if (!open) return null;
+
   return (
     <>
+      {/* Backdrop */}
       <div
-        className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"
-        style={{ zIndex: 3000 }}
+        className="position-fixed top-0 start-0 w-100 h-100"
+        style={{ background: "rgba(0,0,0,0.55)", zIndex: 5200 }}
         onClick={onClose}
       />
 
+      {/* Modal */}
       <div
         className="position-fixed top-50 start-50 translate-middle"
         style={{
-          zIndex: 3100,
+          zIndex: 5300,
           width: "100%",
-          maxWidth: 420,
-          animation: "scaleFade .22s ease",
+          maxWidth: 520,
+          padding: 14,
+          animation: "scaleFade .18s ease",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="p-4 shadow"
-          style={{ borderRadius: 18, background: "#fff" }}
+          className="shadow"
+          style={{
+            borderRadius: 18,
+            background: "#ffffff",
+            overflow: "hidden",
+            border: "1px solid rgba(0,0,0,0.06)",
+          }}
         >
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h6 className="fw-bold m-0" style={{ color: "#2f3e46" }}>
-              🔒 Enter PIN to Open Note
-            </h6>
+          <div
+            className="px-4 py-3 d-flex justify-content-between align-items-center"
+            style={{
+              background: "linear-gradient(135deg, #0b1220, #111827)",
+              color: "#fff",
+            }}
+          >
+            <div className="d-flex align-items-center gap-3">
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                }}
+              >
+                🔓
+              </div>
+              <div>
+                <div className="fw-bold" style={{ lineHeight: 1.15, fontSize: 16 }}>
+                  Enter PIN
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>
+                  {noteTitle ? `Unlock “${noteTitle}” to continue` : "Unlock to continue"}
+                </div>
+              </div>
+            </div>
+
             <button
               className="btn btn-sm"
-              style={{ background: "#e9ecef" }}
+              style={{
+                background: "rgba(255,255,255,0.14)",
+                color: "#fff",
+                borderRadius: 12,
+                padding: "6px 10px",
+              }}
               onClick={onClose}
+              disabled={loading}
             >
               ✕
             </button>
           </div>
 
-          <p className="text-muted small mb-3">
-            This note is locked. Please enter the correct PIN.
-          </p>
+          <div className="p-4">
+            <label className="small fw-semibold mb-2" style={{ color: "#111827" }}>
+              4-digit PIN
+            </label>
 
-          <input
-            type="password"
-            className="form-control mb-3"
-            placeholder="Enter PIN"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            style={{ borderRadius: 12 }}
-          />
-
-          <div className="d-flex justify-content-end gap-2">
-            <button
-              className="btn"
-              style={{ background: "#dee2e6", borderRadius: 10 }}
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-
-            <button
-              className="btn"
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              className="form-control"
+              placeholder="••••"
+              value={pin}
+              autoFocus
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               style={{
-                background: "#84a98c",
-                color: "#fff",
-                borderRadius: 10,
-                opacity: loading ? 0.8 : 1,
+                borderRadius: 14,
+                fontSize: 18,
+                letterSpacing: 8,
+                textAlign: "center",
+                padding: "12px 14px",
+                border: "1px solid rgba(0,0,0,0.12)",
               }}
-              onClick={unlock}
-              disabled={loading}
-            >
-              {loading ? "Unlocking..." : "Unlock"}
-            </button>
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSubmit && !loading) verify();
+              }}
+            />
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <button
+                className="btn"
+                style={{
+                  background: "#eef2f7",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                }}
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="btn"
+                style={{
+                  background: canSubmit ? "linear-gradient(135deg, #22c55e, #16a34a)" : "#f3f4f6",
+                  color: canSubmit ? "#fff" : "#9ca3af",
+                  borderRadius: 12,
+                  padding: "10px 16px",
+                  border: "none",
+                  opacity: loading ? 0.85 : 1,
+                }}
+                onClick={verify}
+                disabled={loading || !canSubmit}
+              >
+                {loading ? "Checking..." : actionLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -110,11 +205,14 @@ export default function UnlockNoteModal({ noteId, onClose, onUnlocked }) {
         <div
           className="position-fixed top-50 start-50 translate-middle px-4 py-3 shadow"
           style={{
-            background: "#2f3e46",
+            background: "rgba(17,24,39,0.95)",
             color: "#fff",
             borderRadius: 14,
-            zIndex: 4000,
-            animation: "fadeIn .25s",
+            zIndex: 9000,
+            animation: "fadeIn .18s",
+            border: "1px solid rgba(255,255,255,0.08)",
+            maxWidth: 420,
+            textAlign: "center",
           }}
         >
           {toast}
@@ -122,8 +220,14 @@ export default function UnlockNoteModal({ noteId, onClose, onUnlocked }) {
       )}
 
       <style>{`
-        @keyframes scaleFade { from {opacity:0; transform:scale(.96)} to {opacity:1; transform:scale(1)} }
-        @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+        @keyframes scaleFade {
+          from { opacity: 0; transform: translate(-50%, -50%) scale(.97); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
       `}</style>
     </>
   );

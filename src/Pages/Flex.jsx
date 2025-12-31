@@ -13,9 +13,9 @@ export default function Flex() {
         { month: "October", emi: 0, status: "Paid" },
         { month: "November", emi: 17300, status: "Overdue" },
       ],
-      penalty: { remaining: 106700, todayAdded: 2000 },
+      penalty: { remaining: 108700, todayAdded: 2000 },
       cibilScore: 329,
-      totalOutstanding: 126000, // EMI + penalty + today penalty
+      totalOutstanding: 128000, // EMI + penalty + today penalty
     }),
     []
   );
@@ -90,7 +90,7 @@ export default function Flex() {
               <div style={S.label}>Total Outstanding</div>
               <div style={S.totalAmount}>{inr(data.totalOutstanding)}</div>
               <div style={S.subText}>
-                EMI {inr(17300)} + Penalty {inr(106700)} + Today {inr(2000)}
+                EMI {inr(17300)} + Penalty {inr(108700)} + Today {inr(2000)}
               </div>
             </div>
             <div style={S.pillOverdue}>Overdue</div>
