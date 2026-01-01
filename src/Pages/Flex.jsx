@@ -13,9 +13,9 @@ export default function Flex() {
         { month: "October", emi: 0, status: "Paid" },
         { month: "November", emi: 17300, status: "Overdue" },
       ],
-      penalty: { remaining: 108700, todayAdded: 2000 },
+      penalty: { remaining: 110700, todayAdded: 2000 },
       cibilScore: 329,
-      totalOutstanding: 128000, // EMI + penalty + today penalty
+      totalOutstanding: 130000, // EMI + penalty + today penalty
     }),
     []
   );
