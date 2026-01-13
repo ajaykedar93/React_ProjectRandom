@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
+// ✅ Make sure these components exist & are imported correctly in your project
 import NavbarDoc from "../components/NavbarDoc.jsx";
 import FooterDoc from "../components/FooterDoc.jsx";
 
@@ -17,7 +18,6 @@ export default function Dashboard() {
       { label: "Get Document", path: "/dashboard/documentget" },
       { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
       { label: "Get Text Docs", path: "/dashboard/gettextdoc" },
-       { label: "Notes", path: "/dashboard/notes" },
     ],
     []
   );
@@ -37,10 +37,12 @@ export default function Dashboard() {
   const logout = () => {
     try {
       if (typeof ctxLogout === "function") ctxLogout();
-    } catch {}
+    } catch (e) {}
+
     try {
       localStorage.removeItem("auth_user");
-    } catch {}
+    } catch (e) {}
+
     navigate("/login", { replace: true });
   };
 
@@ -56,17 +58,27 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
   const [tabsOpen, setTabsOpen] = useState(false);
 
+  // ✅ Mobile detect (works in older browsers too)
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 740px)");
+
     const sync = () => setIsMobile(mq.matches);
     sync();
-    mq.addEventListener?.("change", sync);
-    return () => mq.removeEventListener?.("change", sync);
+
+    // modern
+    if (mq.addEventListener) {
+      mq.addEventListener("change", sync);
+      return () => mq.removeEventListener("change", sync);
+    }
+    // fallback
+    mq.addListener(sync);
+    return () => mq.removeListener(sync);
   }, []);
 
+  // ✅ default open on desktop, closed on mobile
   useEffect(() => {
     if (!isMobile) setTabsOpen(true);
-    if (isMobile) setTabsOpen(false);
+    else setTabsOpen(false);
   }, [isMobile]);
 
   const scrollActiveTabIntoView = () => {
@@ -88,7 +100,8 @@ export default function Dashboard() {
 
     if (left < 0 || right > containerRect.width) {
       const target =
-        container.scrollLeft + (left - containerRect.width / 2 + elRect.width / 2);
+        container.scrollLeft +
+        (left - containerRect.width / 2 + elRect.width / 2);
 
       container.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
     }
@@ -109,7 +122,11 @@ export default function Dashboard() {
       <style>{css}</style>
       <div className="bg" />
 
-      <NavbarDoc displayName={displayName} displayEmail={displayEmail} logout={logout} />
+      <NavbarDoc
+        displayName={displayName}
+        displayEmail={displayEmail}
+        logout={logout}
+      />
 
       {/* ✅ Main content */}
       <main className="wrap">
@@ -145,7 +162,12 @@ export default function Dashboard() {
 
             {(tabsOpen || !isMobile) && (
               <div className="tabStrip">
-                <div ref={tabListRef} className="tabList" role="tablist" aria-label="Dashboard Tabs">
+                <div
+                  ref={tabListRef}
+                  className="tabList"
+                  role="tablist"
+                  aria-label="Dashboard Tabs"
+                >
                   {tabs.map((t) => {
                     const active = getIsActive(t.path);
                     return (
@@ -160,7 +182,10 @@ export default function Dashboard() {
                       >
                         <span className="tabDot" />
                         <span className="tabText">{t.label}</span>
-                        <span className={`tabArrow ${active ? "open" : ""}`} aria-hidden="true">
+                        <span
+                          className={`tabArrow ${active ? "open" : ""}`}
+                          aria-hidden="true"
+                        >
                           ›
                         </span>
                       </button>

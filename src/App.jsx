@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 /* ================== AUTH PAGES ================== */
@@ -15,11 +14,11 @@ import DocumentUpload from "./Pages/document";
 import DocumentGet from "./Pages/documentget";
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
-import Notes from "./Pages/Notes";
-import ShareNote from "./Pages/ShareNote";
+
+/* ================== ADMIN LAYOUT ================== */
+import AdminDashboard from "./Pages/Admin/Admindashboard.jsx";
 
 /* ================== ADMIN PAGES ================== */
-import AdminDashboard from "./Pages/Admin/Admindashboard.jsx";
 import AdminPage from "./Pages/Admin/Admin.jsx";
 import UserAll from "./Pages/Admin/UserAll.jsx";
 import FooterAdmin from "./Pages/Admin/FooterAdmin.jsx";
@@ -68,7 +67,6 @@ export default function App() {
           }
         >
           <Route index element={<AdminPage />} />
-          <Route path="admin" element={<AdminPage />} />
           <Route path="users" element={<UserAll />} />
           <Route path="footer-admin" element={<FooterAdmin />} />
         </Route>
@@ -87,11 +85,7 @@ export default function App() {
           <Route path="documentget" element={<DocumentGet />} />
           <Route path="addtextdoc" element={<Addtextdoc />} />
           <Route path="gettextdoc" element={<Gettextdoc />} />
-          <Route path="notes" element={<Notes />} />
         </Route>
-
-        {/* ================== PUBLIC SHARE ================== */}
-        <Route path="/share/:token" element={<ShareNote />} />
 
         {/* ================== DEFAULT ================== */}
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -7,7 +7,7 @@ export default function Login() {
   const { login } = useAuth();
 
   // ✅ same as your file
-  const API_BASE = import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
+  const API_BASE =  "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
