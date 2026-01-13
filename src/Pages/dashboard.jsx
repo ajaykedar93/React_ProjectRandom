@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
-// ✅ Make sure these components exist & are imported correctly in your project
 import NavbarDoc from "../components/NavbarDoc.jsx";
 import FooterDoc from "../components/FooterDoc.jsx";
 
@@ -11,9 +10,11 @@ export default function Dashboard() {
   const location = useLocation();
   const { user, logout: ctxLogout } = useAuth();
 
+  // ✅ Added new tab: Imp
   const tabs = useMemo(
     () => [
       { label: "Home", path: "/dashboard" },
+      { label: "Imp", path: "/dashboard/importantwork" }, // ✅ NEW
       { label: "Document", path: "/dashboard/document" },
       { label: "Get Document", path: "/dashboard/documentget" },
       { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
@@ -38,11 +39,9 @@ export default function Dashboard() {
     try {
       if (typeof ctxLogout === "function") ctxLogout();
     } catch (e) {}
-
     try {
       localStorage.removeItem("auth_user");
     } catch (e) {}
-
     navigate("/login", { replace: true });
   };
 
@@ -58,24 +57,19 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
   const [tabsOpen, setTabsOpen] = useState(false);
 
-  // ✅ Mobile detect (works in older browsers too)
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 740px)");
-
     const sync = () => setIsMobile(mq.matches);
     sync();
 
-    // modern
     if (mq.addEventListener) {
       mq.addEventListener("change", sync);
       return () => mq.removeEventListener("change", sync);
     }
-    // fallback
     mq.addListener(sync);
     return () => mq.removeListener(sync);
   }, []);
 
-  // ✅ default open on desktop, closed on mobile
   useEffect(() => {
     if (!isMobile) setTabsOpen(true);
     else setTabsOpen(false);
@@ -102,7 +96,6 @@ export default function Dashboard() {
       const target =
         container.scrollLeft +
         (left - containerRect.width / 2 + elRect.width / 2);
-
       container.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
     }
   };
@@ -120,7 +113,7 @@ export default function Dashboard() {
   return (
     <div className="dash">
       <style>{css}</style>
-      <div className="bg" />
+      <div className="bg" aria-hidden="true" />
 
       <NavbarDoc
         displayName={displayName}
@@ -128,7 +121,6 @@ export default function Dashboard() {
         logout={logout}
       />
 
-      {/* ✅ Main content */}
       <main className="wrap">
         <aside className="side">
           <div className="sideCard">
@@ -180,7 +172,7 @@ export default function Dashboard() {
                         role="tab"
                         aria-selected={active}
                       >
-                        <span className="tabDot" />
+                        <span className="tabDot" aria-hidden="true" />
                         <span className="tabText">{t.label}</span>
                         <span
                           className={`tabArrow ${active ? "open" : ""}`}
@@ -207,7 +199,6 @@ export default function Dashboard() {
         </section>
       </main>
 
-      {/* ✅ Footer ONLY at bottom (not fixed) */}
       <FooterDoc />
     </div>
   );
@@ -226,7 +217,10 @@ const css = `
     --flameC: #ffd166;
     --flameBg: rgba(255,106,0,.12);
   }
+
   *{ box-sizing: border-box; }
+  html, body{ width:100%; overflow-x:hidden; }
+  body{ margin:0; }
 
   .dash{
     min-height: 100dvh;
@@ -236,7 +230,15 @@ const css = `
     flex-direction: column;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    overflow: hidden;
+    overflow-x: hidden;
+  }
+
+  .wrap{
+    animation: wrapIn .45s ease both;
+  }
+  @keyframes wrapIn{
+    from{ opacity: 0; transform: translateY(10px); }
+    to{ opacity: 1; transform: translateY(0px); }
   }
 
   .bg{
@@ -253,8 +255,14 @@ const css = `
 
   .wrap{
     position: relative; z-index: 1;
-    width: 100%; max-width: 1280px; margin: 0 auto;
-    display: grid; grid-template-columns: 290px 1fr; gap: 14px;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+
+    display: grid;
+    grid-template-columns: 290px 1fr;
+    gap: 14px;
+
     padding: 14px;
     flex: 1 1 auto;
     min-height: 0;
@@ -270,7 +278,31 @@ const css = `
     padding: 14px;
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     overflow: hidden;
+    position: relative;
+  }
+
+  .sideCard::before,
+  .pageShell::before{
+    content:"";
+    position:absolute;
+    inset:-120px -90px auto -90px;
+    height: 220px;
+    background: radial-gradient(circle at 20% 20%,
+      rgba(59,130,246,.12),
+      rgba(168,85,247,.08),
+      rgba(255,255,255,0) 60%
+    );
+    filter: blur(10px);
+    opacity: .9;
+    pointer-events:none;
+    animation: floatGlow 7s ease-in-out infinite;
+  }
+
+  @keyframes floatGlow{
+    0%,100%{ transform: translateY(0px) translateX(0px); }
+    50%{ transform: translateY(12px) translateX(10px); }
   }
 
   .sideTopRow{
@@ -278,10 +310,17 @@ const css = `
     align-items:center;
     justify-content:space-between;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
   }
 
-  .sideTitle{ font-weight: 1100; color: var(--txt); font-size: 14px; }
+  .sideTitle{
+    font-weight: 1100;
+    color: var(--txt);
+    font-size: 14px;
+    letter-spacing: .2px;
+  }
 
   .miniControls{ display:flex; align-items:center; gap: 8px; }
   .miniIconBtn{
@@ -298,18 +337,19 @@ const css = `
     justify-content:center;
     font-weight: 1100;
     color: rgba(7,17,38,.86);
+    transition: transform .14s ease, filter .14s ease;
   }
+  .miniIconBtn:hover{ transform: translateY(-1px); filter: brightness(1.02); }
+  .miniIconBtn:active{ transform: translateY(0px) scale(.99); }
+
   .miniIconBtn.close{
     border: 1px solid rgba(239,68,68,.22);
     color: #ef4444;
   }
-  .miniArrow{
-    display:inline-block;
-    font-size: 20px;
-    line-height: 1;
-  }
 
-  .tabStrip{ position: relative; }
+  .miniArrow{ display:inline-block; font-size: 20px; line-height: 1; }
+
+  .tabStrip{ position: relative; z-index: 1; }
 
   .tabList{
     display:flex;
@@ -332,11 +372,20 @@ const css = `
     color: rgba(7,17,38,.86);
     position: relative;
     flex: 0 0 auto;
+    transition: transform .14s ease, filter .14s ease, box-shadow .14s ease;
   }
+
+  .tabBtn:hover{
+    transform: translateY(-1px);
+    filter: brightness(1.02);
+    box-shadow: 0 16px 34px rgba(0,0,0,.08);
+  }
+
   .tabBtn.active{
     background: linear-gradient(180deg, var(--flameBg), rgba(255,255,255,.72));
     outline: 2px solid rgba(255,106,0,.28);
   }
+
   .tabBtn.active::after{
     content:"";
     position:absolute;
@@ -348,9 +397,23 @@ const css = `
     background: linear-gradient(90deg, var(--flameA), var(--flameB), var(--flameC));
   }
 
-  .tabDot{ width: 10px; height: 10px; border-radius: 999px; background: rgba(255,106,0,.28); }
-  .tabBtn.active .tabDot{ background: linear-gradient(90deg, var(--flameA), var(--flameB)); }
-  .tabText{ white-space: nowrap; }
+  .tabDot{
+    width: 10px; height: 10px;
+    border-radius: 999px;
+    background: rgba(255,106,0,.28);
+    flex: 0 0 auto;
+  }
+
+  .tabBtn.active .tabDot{
+    background: linear-gradient(90deg, var(--flameA), var(--flameB));
+  }
+
+  .tabText{
+    white-space: nowrap;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   .tabArrow{
     margin-left: auto;
@@ -360,6 +423,7 @@ const css = `
     transform: rotate(0deg);
     transition: transform .18s ease;
     opacity: .9;
+    flex: 0 0 auto;
   }
   .tabArrow.open{ transform: rotate(90deg); }
 
@@ -372,10 +436,12 @@ const css = `
     padding: 16px;
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 28px;
+    position: relative;
   }
 
   @media (max-width: 980px){
@@ -384,6 +450,8 @@ const css = `
   }
 
   @media (max-width: 740px){
+    .wrap{ padding: 10px; gap: 10px; }
+    .sideCard, .pageShell{ border-radius: 20px; }
     .tabArrow{ display:inline-block; }
 
     .tabList{
@@ -404,11 +472,18 @@ const css = `
 
     .tabBtn{
       width: auto;
-      min-width: 34vw;
-      max-width: 62vw;
-      padding: 9px 10px;
+      min-width: 44vw;
+      max-width: 78vw;
+      padding: 10px 12px;
       border-radius: 16px;
       font-size: 12px;
+    }
+
+    .tabText{
+      max-width: 52vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .fadeLeft,
@@ -424,4 +499,10 @@ const css = `
   }
 
   .fadeLeft, .fadeRight{ display:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    .wrap{ animation: none; }
+    .sideCard::before, .pageShell::before{ animation: none; }
+    .tabBtn, .miniIconBtn{ transition: none; }
+  }
 `;

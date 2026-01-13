@@ -15,6 +15,9 @@ import DocumentGet from "./Pages/documentget";
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
 
+/* ✅ NEW: Important Work Page (path: Pages/Work/Importantwork.jsx) */
+import Importantwork from "./Pages/Work/Importantwork";
+
 /* ================== ADMIN LAYOUT ================== */
 import AdminDashboard from "./Pages/Admin/Admindashboard.jsx";
 
@@ -81,6 +84,7 @@ export default function App() {
           }
         >
           <Route index element={<DashboardHome />} />
+          <Route path="importantwork" element={<Importantwork />} /> {/* ✅ NEW */}
           <Route path="document" element={<DocumentUpload />} />
           <Route path="documentget" element={<DocumentGet />} />
           <Route path="addtextdoc" element={<Addtextdoc />} />
