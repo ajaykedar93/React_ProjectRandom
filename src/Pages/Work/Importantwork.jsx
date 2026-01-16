@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Measure from "./Measure";
 import Calculator from "./Calculator";
+import Checklist from "./Checklist"; // ✅ ADD THIS
 
 export default function Importantwork() {
   const tabs = useMemo(
@@ -60,7 +61,7 @@ export default function Importantwork() {
         </div>
       </div>
 
-      {/* ✅ Full screen panel with ZERO padding (so Measure/Calculator can be full screen) */}
+      {/* ✅ Full screen panel with ZERO padding (so inner pages can be full screen) */}
       <div className="panel">
         {/* Panel top info (small) */}
         <div className="panelTop">
@@ -90,12 +91,8 @@ export default function Importantwork() {
             </div>
           )}
 
-          {active === "checklist" && (
-            <div className="placeholder">
-              <div className="phTitle">Checklist Tool</div>
-              <div className="phText">Add Checklist.jsx and import it here.</div>
-            </div>
-          )}
+          {/* ✅ SHOW Checklist page here */}
+          {active === "checklist" && <Checklist />}
         </div>
       </div>
     </div>
@@ -264,7 +261,7 @@ const css = `
     color: var(--muted);
   }
 
-  /* ✅ Here we remove ALL padding so inner pages (Measure/Calculator) are edge-to-edge */
+  /* ✅ remove ALL padding so inner pages are edge-to-edge */
   .contentShell{
     width:100%;
     max-width:100%;

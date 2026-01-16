@@ -8,6 +8,9 @@ export default function Calculator() {
   const [history, setHistory] = useState([]);
   const [hIndex, setHIndex] = useState(-1); // -1 = current, else browsing history index
 
+  // ✅ mobile/tab click feel
+  const [pressedKey, setPressedKey] = useState(null);
+
   const isOp = (c) => ["+", "-", "×", "÷"].includes(c);
 
   // ✅ Convert UI expression to JS expression (handles % properly)
@@ -70,7 +73,6 @@ export default function Calculator() {
   };
 
   const setAll = (nextExpr) => {
-    // if browsing history and user starts editing => return to current mode
     if (hIndex !== -1) setHIndex(-1);
     setExpr(nextExpr);
     setLiveResult(computeLive(nextExpr));
@@ -144,7 +146,12 @@ export default function Calculator() {
       const out = formatNumber(result);
 
       const item = { expr: t, result: out };
-      setHistory((prev) => [...prev, item]);
+
+      // ✅ keep only last 5 in state
+      setHistory((prev) => {
+        const next = [...prev, item];
+        return next.length > 5 ? next.slice(next.length - 5) : next;
+      });
 
       setExpr(out);
       setLiveResult(out);
@@ -159,8 +166,10 @@ export default function Calculator() {
     }
   };
 
-  // ✅ History Prev/Next + show list below
-  const canPrev = history.length > 0 && (hIndex === -1 ? history.length - 1 >= 0 : hIndex - 1 >= 0);
+  // ✅ History Prev/Next (with max 5)
+  const canPrev =
+    history.length > 0 &&
+    (hIndex === -1 ? history.length - 1 >= 0 : hIndex - 1 >= 0);
   const canNext = history.length > 0 && hIndex !== -1 && hIndex + 1 < history.length;
 
   const goPrev = () => {
@@ -196,11 +205,22 @@ export default function Calculator() {
     setLiveResult(history[idx].result);
   };
 
-  // ✅ Color mapping for operator buttons (as you asked)
-  // + / - : red
-  // × / ÷ : orange
-  // % : blue
-  // = : green
+  // ✅ clear history via small cross icon
+  const clearHistory = () => {
+    setHistory([]);
+    setHIndex(-1);
+  };
+
+  // ✅ Key press feel (mobile/tab)
+  const runKey = (k) => {
+    setPressedKey(k.t);
+    k.on?.();
+    window.clearTimeout(runKey.__t);
+    runKey.__t = window.setTimeout(() => setPressedKey(null), 120);
+  };
+
+  // ✅ Color mapping:
+  // + / - : red | × / ÷ : orange | % : blue | = : green
   const keys = useMemo(
     () => [
       { t: "C", type: "func", on: clearAll },
@@ -227,6 +247,7 @@ export default function Calculator() {
       { t: ".", type: "num", on: () => pressDigit(".") },
       { t: "=", type: "eq green", on: pressEquals },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [expr, hIndex, history]
   );
 
@@ -263,50 +284,74 @@ export default function Calculator() {
         {/* Screen */}
         <div className="screen">
           <div className="exprLine">{expr || "0"}</div>
-          <div className="resLine">{liveResult}</div>
+          <div className={`resLine ${liveResult === "Error" ? "err" : ""}`}>{liveResult}</div>
         </div>
 
-        {/* History row (below screen) */}
+        {/* History */}
         <div className="historyWrap">
-          <div className="historyTitle">History</div>
+          <div className="historyHead">
+            <div className="historyTitle">History (Last 5)</div>
+
+            <button
+              type="button"
+              className={`historyClear ${history.length ? "" : "disabled"}`}
+              onClick={clearHistory}
+              disabled={!history.length}
+              title="Clear history"
+              aria-label="Clear history"
+            >
+              ✕
+            </button>
+          </div>
 
           {history.length === 0 ? (
             <div className="historyEmpty">No calculations yet.</div>
           ) : (
             <div className="historyList">
-              {history.slice().reverse().map((h, i) => {
-                const realIdx = history.length - 1 - i;
-                const activeRow = hIndex === realIdx;
-                return (
-                  <button
-                    key={`${h.expr}-${realIdx}`}
-                    type="button"
-                    className={`historyRow ${activeRow ? "active" : ""}`}
-                    onClick={() => jumpToHistory(realIdx)}
-                    title="Open this calculation"
-                  >
-                    <span className="hExpr">{h.expr}</span>
-                    <span className="hEq">=</span>
-                    <span className="hRes">{h.result}</span>
-                  </button>
-                );
-              })}
+              {history
+                .slice()
+                .reverse()
+                .map((h, i) => {
+                  const realIdx = history.length - 1 - i;
+                  const activeRow = hIndex === realIdx;
+                  return (
+                    <button
+                      key={`${h.expr}-${realIdx}`}
+                      type="button"
+                      className={`historyRow ${activeRow ? "active" : ""}`}
+                      onClick={() => jumpToHistory(realIdx)} // ✅ clicking history opens it on top
+                      title="Open this calculation"
+                    >
+                      <span className="hExpr">{h.expr}</span>
+                      <span className="hEq">=</span>
+                      <span className="hRes">{h.result}</span>
+                    </button>
+                  );
+                })}
             </div>
           )}
         </div>
 
         {/* Buttons */}
         <div className="pad">
-          {keys.map((k, idx) => (
-            <button
-              key={`${k.t}-${idx}`}
-              className={`btn ${k.type}`}
-              onClick={k.on}
-              type="button"
-            >
-              {k.t}
-            </button>
-          ))}
+          {keys.map((k, idx) => {
+            const isPressed = pressedKey === k.t;
+            return (
+              <button
+                key={`${k.t}-${idx}`}
+                className={`btn ${k.type} ${isPressed ? "pressed" : ""}`}
+                onClick={() => runKey(k)}
+                onPointerDown={() => setPressedKey(k.t)}
+                onPointerUp={() => setPressedKey(null)}
+                onPointerCancel={() => setPressedKey(null)}
+                onPointerLeave={() => setPressedKey(null)}
+                type="button"
+              >
+                <span className="btnText">{k.t}</span>
+                <span className="ripple" />
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -315,13 +360,16 @@ export default function Calculator() {
 
 const css = `
   *{ box-sizing:border-box; }
+  html, body{ height:100%; }
 
   :root{
     --bg:#f4f7fb;
     --card:#ffffff;
     --border:#e5eaf2;
-    --text:#111827;
-    --muted:#6b7280;
+    --text:#0f172a;
+    --muted:#64748b;
+
+    --resultBlue:#2563eb;
 
     /* operator colors */
     --red1:#ef4444;
@@ -337,6 +385,7 @@ const css = `
     --green2:#22c55e;
 
     --shadow: 0 14px 32px rgba(17,24,39,.08);
+    --shadow2: 0 10px 18px rgba(17,24,39,.10);
   }
 
   .calcPage{
@@ -354,6 +403,7 @@ const css = `
     display:flex;
     flex-direction:column;
     gap: 12px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   /* Top bar */
@@ -373,8 +423,8 @@ const css = `
   }
 
   .navBtn{
-    width:44px;
-    height:44px;
+    width:46px;
+    height:46px;
     border-radius:14px;
     border:1px solid var(--border);
     background:#fff;
@@ -383,8 +433,11 @@ const css = `
     font-weight:900;
     font-size:16px;
     color:var(--text);
+    transition: transform .12s ease, box-shadow .12s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-
+  .navBtn:active{ transform: scale(.98); }
   .navBtn.disabled{
     opacity:.45;
     cursor:not-allowed;
@@ -394,36 +447,39 @@ const css = `
   /* Screen */
   .screen{
     border:1px solid var(--border);
-    border-radius:20px;
-    background: linear-gradient(180deg, #ffffff, #f9fbff);
+    border-radius:22px;
+    background: linear-gradient(180deg, #ffffff, #f7fbff);
     box-shadow: var(--shadow);
-    padding:14px 12px;
-    min-height: 96px;
+    padding:16px 14px;
+    min-height: 110px;
     display:flex;
     flex-direction:column;
     justify-content:center;
-    gap:6px;
+    gap:8px;
     overflow:hidden;
   }
 
   .exprLine{
     font-size:16px;
     font-weight:900;
-    color: var(--muted);
-    text-align:right;
-    word-break: break-word;
-  }
-
-  .resLine{
-    font-size:30px;
-    font-weight:900;
     color: var(--text);
     text-align:right;
     word-break: break-word;
-    line-height:1.1;
+    opacity:.85;
   }
 
-  /* History below screen */
+  .resLine{
+    font-size:34px;
+    font-weight:900;
+    color: var(--resultBlue);
+    text-align:right;
+    word-break: break-word;
+    line-height:1.08;
+    letter-spacing:.2px;
+  }
+  .resLine.err{ color:#ef4444; }
+
+  /* History */
   .historyWrap{
     border: 1px solid var(--border);
     border-radius: 18px;
@@ -432,11 +488,43 @@ const css = `
     padding: 10px;
   }
 
+  .historyHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom: 8px;
+  }
+
   .historyTitle{
     font-size: 12px;
     font-weight: 900;
-    color: #374151;
-    margin-bottom: 8px;
+    color: #334155;
+  }
+
+  .historyClear{
+    width:26px;
+    height:26px;
+    border-radius: 9px;
+    border: 1px solid rgba(0,0,0,.08);
+    background:#fff;
+    color:#111827;
+    font-weight: 900;
+    cursor:pointer;
+    box-shadow: 0 6px 12px rgba(0,0,0,.06);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform .12s ease, opacity .12s ease;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+  }
+  .historyClear:active{ transform: scale(.97); }
+  .historyClear.disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    box-shadow:none;
   }
 
   .historyEmpty{
@@ -467,7 +555,11 @@ const css = `
     justify-content:space-between;
     gap: 8px;
     text-align:left;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform .12s ease, background .12s ease;
   }
+  .historyRow:active{ transform: scale(.99); }
 
   .historyRow.active{
     outline: 2px solid rgba(37,99,235,.18);
@@ -477,7 +569,7 @@ const css = `
   .hExpr{
     font-size: 12px;
     font-weight: 900;
-    color: #111827;
+    color: #0f172a;
     max-width: 55%;
     overflow:hidden;
     text-overflow: ellipsis;
@@ -507,26 +599,55 @@ const css = `
     grid-template-columns: repeat(4, 1fr);
     gap:12px;
     flex: 1;
-    align-content:start;
+    align-content:stretch;
   }
 
   .btn{
-    height:58px;
-    border-radius:16px;
+    position:relative;
+    height: 70px;
+    border-radius:18px;
     border:1px solid var(--border);
-    background:#fff;  /* numbers white */
+    background:#fff;
     color: var(--text);
     font-weight:900;
-    font-size:18px;
+    font-size: 22px;
     cursor:pointer;
-    box-shadow: var(--shadow);
-    transition: transform .08s ease;
+    box-shadow: var(--shadow2);
+    transition: transform .10s ease, box-shadow .12s ease, filter .12s ease;
+    overflow:hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select:none;
   }
-  .btn:active{ transform: translateY(1px); }
 
-  .btn.func{ background:#f8fafc; }
+  .btnText{ position:relative; z-index:2; }
 
-  /* operator colors */
+  .btn:hover{ filter: brightness(1.01); }
+  .btn:active{ transform: translateY(1px) scale(.985); box-shadow: var(--shadow); }
+
+  .btn.pressed{
+    transform: translateY(1px) scale(.985);
+    box-shadow: var(--shadow);
+  }
+
+  .btn .ripple{
+    position:absolute;
+    inset:0;
+    background: radial-gradient(circle at center, rgba(37,99,235,.18), transparent 55%);
+    opacity:0;
+    transform: scale(.85);
+    transition: opacity .18s ease, transform .18s ease;
+    z-index:1;
+    pointer-events:none;
+  }
+  .btn:active .ripple,
+  .btn.pressed .ripple{
+    opacity:1;
+    transform: scale(1);
+  }
+
+  .btn.func{ background:#f8fafc; color:#0f172a; }
+
   .btn.op.red{
     border: 1px solid rgba(239,68,68,.22);
     background: linear-gradient(135deg, var(--red1), var(--red2));
@@ -562,9 +683,11 @@ const css = `
     }
     .calcCard{
       min-height:auto;
-      max-width: 540px;
+      max-width: 560px;
       border-radius: 22px;
       box-shadow: 0 24px 70px rgba(17,24,39,.12);
     }
+    .btn{ height: 76px; font-size:24px; }
+    .resLine{ font-size: 38px; }
   }
 `;
