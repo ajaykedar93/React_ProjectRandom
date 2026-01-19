@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import Measure from "./Measure";
 import Calculator from "./Calculator";
-import Checklist from "./Checklist"; // ✅ ADD THIS
+import NotesN from "./NotesN"; // ✅ ADD THIS (same folder)
+import Checklist from "./Checklist"; // ✅ already
 
 export default function Importantwork() {
   const tabs = useMemo(
@@ -84,12 +85,8 @@ export default function Importantwork() {
           {active === "measure" && <Measure />}
           {active === "calculator" && <Calculator />}
 
-          {active === "notes" && (
-            <div className="placeholder">
-              <div className="phTitle">Notes Tool</div>
-              <div className="phText">Add Notes.jsx and import it here.</div>
-            </div>
-          )}
+          {/* ✅ SHOW Notes page here */}
+          {active === "notes" && <NotesN />}
 
           {/* ✅ SHOW Checklist page here */}
           {active === "checklist" && <Checklist />}
@@ -267,26 +264,6 @@ const css = `
     max-width:100%;
     padding: 0;
     margin: 0;
-  }
-
-  /* Placeholders (if needed) */
-  .placeholder{
-    width:100%;
-    background:#fff;
-    border-top: 1px solid var(--border);
-    padding: 16px;
-  }
-  .phTitle{
-    font-size:13px;
-    font-weight:1000;
-    color: var(--text);
-    margin-bottom:6px;
-  }
-  .phText{
-    font-size:12px;
-    font-weight:800;
-    color: var(--muted);
-    line-height:1.45;
   }
 
   /* Desktop spacing */
