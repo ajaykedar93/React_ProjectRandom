@@ -206,21 +206,34 @@ export default function Dashboard() {
 
 const css = `
   :root{
-    --txt:#071126;
-    --muted: rgba(7,17,38,.62);
-    --card: rgba(255,255,255,.86);
-    --line: rgba(255,255,255,.58);
-    --shadow: 0 30px 90px rgba(0,0,0,.18);
+    /* ✅ Modern Professional Palette (Blue/Cyan) */
+    --txt: #0b1220;
+    --muted: rgba(11,18,32,.62);
 
-    --flameA: #ff6a00;
-    --flameB: #ff2d55;
-    --flameC: #ffd166;
-    --flameBg: rgba(255,106,0,.12);
+    --card: rgba(255,255,255,.90);
+    --line: rgba(11,18,32,.10);
+    --shadow: 0 26px 80px rgba(11,18,32,.14);
+
+    /* Accent */
+    --a1: #2563eb;              /* blue */
+    --a2: #06b6d4;              /* cyan */
+    --a3: #60a5fa;              /* soft blue */
+
+    --accentBg: rgba(37,99,235,.12);
+    --accentBg2: rgba(6,182,212,.10);
+
+    /* Tab states */
+    --tabBg: rgba(255,255,255,.72);
+    --tabHover: rgba(37,99,235,.08);
+    --tabActive: rgba(37,99,235,.12);
+    --tabOutline: rgba(37,99,235,.30);
+
+    --danger: #ef4444;
   }
 
   *{ box-sizing: border-box; }
   html, body{ width:100%; overflow-x:hidden; }
-  body{ margin:0; }
+  body{ margin:0; color: var(--txt); }
 
   .dash{
     min-height: 100dvh;
@@ -241,17 +254,19 @@ const css = `
     to{ opacity: 1; transform: translateY(0px); }
   }
 
-  .bg{
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .26), transparent 60%),
-      radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .22), transparent 58%),
-      radial-gradient(1000px 650px at 50% 92%, rgba(0, 255, 150, .18), transparent 60%),
-      radial-gradient(1200px 800px at 50% 50%, rgba(124,58,237,.10), transparent 70%),
-      linear-gradient(135deg, #fff7ed 0%, #eff6ff 34%, #ecfeff 67%, #f0fdf4 100%);
-    pointer-events:none;
-    z-index:0;
-  }
+  /* ✅ New professional background (no neon pink/green) */
+.bg{
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(900px 520px at 20% 12%, rgba(246, 137, 35, 0.25), transparent 60%),
+    radial-gradient(900px 520px at 80% 20%, rgba(241, 89, 112, 0.22), transparent 58%),
+    linear-gradient(180deg, #e44c22 0%, #db4e2a 55%, #ee512d 100%);
+  pointer-events:none;
+  z-index:0;
+}
+
+
 
   .wrap{
     position: relative; z-index: 1;
@@ -283,6 +298,7 @@ const css = `
     position: relative;
   }
 
+  /* ✅ Same glow effect, updated colors */
   .sideCard::before,
   .pageShell::before{
     content:"";
@@ -290,12 +306,12 @@ const css = `
     inset:-120px -90px auto -90px;
     height: 220px;
     background: radial-gradient(circle at 20% 20%,
-      rgba(59,130,246,.12),
-      rgba(168,85,247,.08),
+      rgba(37,99,235,.14),
+      rgba(6,182,212,.10),
       rgba(255,255,255,0) 60%
     );
     filter: blur(10px);
-    opacity: .9;
+    opacity: .95;
     pointer-events:none;
     animation: floatGlow 7s ease-in-out infinite;
   }
@@ -316,35 +332,41 @@ const css = `
   }
 
   .sideTitle{
-    font-weight: 1100;
+    font-weight: 950;
     color: var(--txt);
     font-size: 14px;
     letter-spacing: .2px;
   }
 
   .miniControls{ display:flex; align-items:center; gap: 8px; }
+
   .miniIconBtn{
     border:none;
     cursor:pointer;
     width: 38px;
     height: 38px;
     border-radius: 14px;
-    background: rgba(255,255,255,.62);
-    border: 1px solid rgba(255,255,255,.65);
-    box-shadow: 0 14px 40px rgba(0,0,0,.08);
+    background: rgba(255,255,255,.78);
+    border: 1px solid var(--line);
+    box-shadow: 0 14px 40px rgba(11,18,32,.10);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-weight: 1100;
-    color: rgba(7,17,38,.86);
-    transition: transform .14s ease, filter .14s ease;
+    font-weight: 950;
+    color: rgba(11,18,32,.86);
+    transition: transform .14s ease, filter .14s ease, background .14s ease;
   }
-  .miniIconBtn:hover{ transform: translateY(-1px); filter: brightness(1.02); }
+  .miniIconBtn:hover{
+    transform: translateY(-1px);
+    background: rgba(37,99,235,.08);
+    filter: brightness(1.02);
+  }
   .miniIconBtn:active{ transform: translateY(0px) scale(.99); }
 
   .miniIconBtn.close{
     border: 1px solid rgba(239,68,68,.22);
-    color: #ef4444;
+    color: var(--danger);
+    background: rgba(239,68,68,.06);
   }
 
   .miniArrow{ display:inline-block; font-size: 20px; line-height: 1; }
@@ -358,6 +380,7 @@ const css = `
     overflow: hidden;
   }
 
+  /* ✅ Tab button: professional look + click/focus */
   .tabBtn{
     width:100%;
     display:flex;
@@ -365,27 +388,42 @@ const css = `
     gap: 10px;
     border:none;
     cursor:pointer;
+
     padding: 11px 12px;
     border-radius: 18px;
-    background: rgba(255,255,255,.62);
-    font-weight: 1000;
-    color: rgba(7,17,38,.86);
+    background: var(--tabBg);
+
+    font-weight: 900;
+    color: rgba(11,18,32,.88);
+
     position: relative;
     flex: 0 0 auto;
-    transition: transform .14s ease, filter .14s ease, box-shadow .14s ease;
+
+    transition: transform .14s ease, filter .14s ease, box-shadow .14s ease, background .14s ease, outline-color .14s ease;
+    outline: 2px solid transparent;
   }
 
   .tabBtn:hover{
     transform: translateY(-1px);
-    filter: brightness(1.02);
-    box-shadow: 0 16px 34px rgba(0,0,0,.08);
+    background: var(--tabHover);
+    box-shadow: 0 16px 34px rgba(11,18,32,.10);
   }
 
+  .tabBtn:active{
+    transform: translateY(0px) scale(.99);
+  }
+
+  .tabBtn:focus-visible{
+    outline-color: var(--tabOutline);
+  }
+
+  /* ✅ Active tab */
   .tabBtn.active{
-    background: linear-gradient(180deg, var(--flameBg), rgba(255,255,255,.72));
-    outline: 2px solid rgba(255,106,0,.28);
+    background: linear-gradient(180deg, var(--tabActive), rgba(255,255,255,.78));
+    outline-color: var(--tabOutline);
   }
 
+  /* ✅ Active bottom bar (same style, new colors) */
   .tabBtn.active::after{
     content:"";
     position:absolute;
@@ -394,18 +432,19 @@ const css = `
     bottom: 8px;
     height: 3px;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--flameA), var(--flameB), var(--flameC));
+    background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
   }
 
   .tabDot{
     width: 10px; height: 10px;
     border-radius: 999px;
-    background: rgba(255,106,0,.28);
+    background: rgba(11,18,32,.20);
     flex: 0 0 auto;
   }
 
   .tabBtn.active .tabDot{
-    background: linear-gradient(90deg, var(--flameA), var(--flameB));
+    background: linear-gradient(90deg, var(--a1), var(--a2));
+    box-shadow: 0 0 0 6px rgba(37,99,235,.12);
   }
 
   .tabText{
