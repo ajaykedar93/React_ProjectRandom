@@ -9,11 +9,13 @@ export default function FooterDoc() {
           border-top: 1px solid rgba(255, 255, 255, 0.12);
           color: #f8fafc;
           font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+          width: 100%;
         }
 
         .footerAccent {
           height: 4px;
           background: linear-gradient(90deg, #ec4899, #facc15, #a855f7);
+          width: 100%;
         }
 
         .footerInner {
@@ -99,15 +101,23 @@ export default function FooterDoc() {
           white-space: nowrap;
         }
 
-        /* MOBILE */
+        /* ✅ MOBILE: everything CENTER */
         @media (max-width: 720px) {
           .footerInner {
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;     /* center */
+            justify-content: center; /* center */
+            text-align: center;      /* center text */
+          }
+
+          .footerLeft {
+            justify-content: center;
+            width: 100%;
           }
 
           .footerRight {
-            justify-content: flex-start;
+            justify-content: center;
+            width: 100%;
           }
 
           .devText {
@@ -115,12 +125,18 @@ export default function FooterDoc() {
           }
         }
 
+        /* ✅ EXTRA SMALL: still center, but allow full width if needed */
         @media (max-width: 420px) {
           .footerChip,
           .codeTag {
             width: 100%;
             justify-content: center;
             text-align: center;
+          }
+
+          .footerLeft {
+            flex-direction: column;
+            gap: 10px;
           }
         }
       `}</style>

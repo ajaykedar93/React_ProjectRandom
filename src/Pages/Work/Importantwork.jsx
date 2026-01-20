@@ -106,12 +106,13 @@ const css = `
     --text:#111827;
     --muted:#6b7280;
 
-    --accent1:#2563eb;  /* blue */
-    --accent2:#7c3aed;  /* purple */
+    --a1:#2563eb;  /* blue */
+    --a2:#7c3aed;  /* purple */
+    --a3:#06b6d4;  /* cyan */
+
     --soft:#eef2ff;
   }
 
-  /* ✅ Full page (no outside padding at all) */
   .impTabsPage{
     width:100%;
     min-height:100vh;
@@ -119,7 +120,7 @@ const css = `
     overflow-x:hidden;
   }
 
-  /* ✅ Header: full width bar */
+  /* HEADER */
   .head{
     width:100%;
     display:flex;
@@ -181,11 +182,13 @@ const css = `
     flex:0 0 auto;
   }
 
-  /* ✅ Tabs: full width, sticky-looking strip */
+  /* TABS STRIP */
   .stripWrap{
     width:100%;
     border-bottom: 1px solid var(--border);
-    background: #fff;
+    background: rgba(255,255,255,.90);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   .strip{
@@ -196,6 +199,7 @@ const css = `
     padding: 10px 12px;
     scrollbar-width:none;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
   .strip::-webkit-scrollbar{ height:0; }
 
@@ -214,9 +218,24 @@ const css = `
     font-weight:900;
     color: rgba(17,24,39,.85);
     min-width: 140px;
+    transition: transform .14s ease, box-shadow .14s ease, background .14s ease, border-color .14s ease, outline-color .14s ease;
+    outline: 2px solid transparent;
+    position: relative;
+  }
+
+  .chip:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 16px 36px rgba(17,24,39,.10);
+  }
+
+  .chip:active{ transform: translateY(0px) scale(.99); }
+
+  .chip:focus-visible{
+    outline-color: rgba(37,99,235,.35);
   }
 
   .chip .emoji{ font-size:16px; }
+
   .chip .lbl{
     font-size:12px;
     max-width: 110px;
@@ -226,12 +245,25 @@ const css = `
   }
 
   .chip.active{
-    background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(124,58,237,.10));
-    border-color: rgba(37,99,235,.25);
-    outline: 2px solid rgba(37,99,235,.12);
+    background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(124,58,237,.12), rgba(6,182,212,.08));
+    border-color: rgba(37,99,235,.28);
+    outline: 2px solid rgba(37,99,235,.14);
+    box-shadow: 0 18px 42px rgba(37,99,235,.18);
   }
 
-  /* ✅ Panel: FULL screen content, no padding */
+  .chip.active::after{
+    content:"";
+    position:absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 7px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
+    opacity: .95;
+  }
+
+  /* PANEL */
   .panel{
     width:100%;
     min-height: calc(100vh - 120px);
@@ -240,7 +272,6 @@ const css = `
     margin: 0;
   }
 
-  /* Panel top info with light padding only */
   .panelTop{
     padding: 12px 14px;
   }
@@ -258,12 +289,65 @@ const css = `
     color: var(--muted);
   }
 
-  /* ✅ remove ALL padding so inner pages are edge-to-edge */
   .contentShell{
     width:100%;
     max-width:100%;
     padding: 0;
     margin: 0;
+  }
+
+  /* ✅ MOBILE: PROFESSIONAL TABS (small + modern + glow) */
+  @media (max-width: 640px){
+    .strip{
+      gap: 8px;
+      padding: 10px 10px 12px;
+      scroll-snap-type: x mandatory;
+    }
+
+    .chip{
+      min-width: max-content;
+      border-radius: 999px;          /* chip style */
+      padding: 9px 12px;             /* small */
+      box-shadow: 0 10px 22px rgba(17,24,39,.08);
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      scroll-snap-align: start;
+    }
+
+    .chip .emoji{ font-size: 15px; }
+
+    /* ✅ allow label to show more (no cut) */
+    .chip .lbl{
+      max-width: none;
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: unset;
+    }
+
+    /* ✅ active = modern ring + glow */
+    .chip.active{
+      background: linear-gradient(135deg,
+        rgba(37,99,235,.22),
+        rgba(124,58,237,.18),
+        rgba(6,182,212,.14)
+      );
+      box-shadow:
+        0 16px 34px rgba(37,99,235,.26),
+        0 0 0 2px rgba(37,99,235,.22);
+      border-color: rgba(37,99,235,.35);
+    }
+
+    .chip.active::after{
+      left: 14px;
+      right: 14px;
+      bottom: 6px;
+      height: 2px;
+    }
+
+    /* header text small */
+    .title{ font-size: 17px; }
+    .sub{ max-width: 70vw; }
   }
 
   /* Desktop spacing */

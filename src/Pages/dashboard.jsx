@@ -10,11 +10,10 @@ export default function Dashboard() {
   const location = useLocation();
   const { user, logout: ctxLogout } = useAuth();
 
-  // ✅ Added new tab: Imp
   const tabs = useMemo(
     () => [
       { label: "Home", path: "/dashboard" },
-      { label: "Imp", path: "/dashboard/importantwork" }, // ✅ NEW
+      { label: "Imp", path: "/dashboard/importantwork" },
       { label: "Document", path: "/dashboard/document" },
       { label: "Get Document", path: "/dashboard/documentget" },
       { label: "Add Text Doc", path: "/dashboard/addtextdoc" },
@@ -199,14 +198,16 @@ export default function Dashboard() {
         </section>
       </main>
 
-      <FooterDoc />
+      {/* ✅ Sticky footer wrapper: always bottom for all pages */}
+      <div className="footerWrap">
+        <FooterDoc />
+      </div>
     </div>
   );
 }
 
 const css = `
   :root{
-    /* ✅ Modern Professional Palette (Blue/Cyan) */
     --txt: #0b1220;
     --muted: rgba(11,18,32,.62);
 
@@ -214,25 +215,23 @@ const css = `
     --line: rgba(11,18,32,.10);
     --shadow: 0 26px 80px rgba(11,18,32,.14);
 
-    /* Accent */
-    --a1: #2563eb;              /* blue */
-    --a2: #06b6d4;              /* cyan */
-    --a3: #60a5fa;              /* soft blue */
+    --a1: #2563eb;
+    --a2: #06b6d4;
+    --a3: #60a5fa;
 
     --accentBg: rgba(37,99,235,.12);
     --accentBg2: rgba(6,182,212,.10);
 
-    /* Tab states */
     --tabBg: rgba(255,255,255,.72);
     --tabHover: rgba(37,99,235,.08);
-    --tabActive: rgba(37,99,235,.12);
-    --tabOutline: rgba(37,99,235,.30);
+    --tabActive: rgba(37,99,235,.14);
+    --tabOutline: rgba(37,99,235,.35);
 
     --danger: #ef4444;
   }
 
   *{ box-sizing: border-box; }
-  html, body{ width:100%; overflow-x:hidden; }
+  html, body{ width:100%; overflow-x:hidden; height: 100%; }
   body{ margin:0; color: var(--txt); }
 
   .dash{
@@ -247,29 +246,8 @@ const css = `
   }
 
   .wrap{
-    animation: wrapIn .45s ease both;
-  }
-  @keyframes wrapIn{
-    from{ opacity: 0; transform: translateY(10px); }
-    to{ opacity: 1; transform: translateY(0px); }
-  }
-
-  /* ✅ New professional background (no neon pink/green) */
-.bg{
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(900px 520px at 20% 12%, rgba(246, 137, 35, 0.25), transparent 60%),
-    radial-gradient(900px 520px at 80% 20%, rgba(241, 89, 112, 0.22), transparent 58%),
-    linear-gradient(180deg, #e44c22 0%, #db4e2a 55%, #ee512d 100%);
-  pointer-events:none;
-  z-index:0;
-}
-
-
-
-  .wrap{
-    position: relative; z-index: 1;
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 1280px;
     margin: 0 auto;
@@ -279,8 +257,27 @@ const css = `
     gap: 14px;
 
     padding: 14px;
+
     flex: 1 1 auto;
     min-height: 0;
+
+    animation: wrapIn .45s ease both;
+  }
+
+  @keyframes wrapIn{
+    from{ opacity: 0; transform: translateY(10px); }
+    to{ opacity: 1; transform: translateY(0px); }
+  }
+
+  .bg{
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(900px 520px at 20% 12%, rgba(246, 137, 35, 0.25), transparent 60%),
+      radial-gradient(900px 520px at 80% 20%, rgba(241, 89, 112, 0.22), transparent 58%),
+      linear-gradient(180deg, #e44c22 0%, #db4e2a 55%, #ee512d 100%);
+    pointer-events:none;
+    z-index:0;
   }
 
   .side, .content{ min-height: 0; min-width: 0; }
@@ -298,7 +295,6 @@ const css = `
     position: relative;
   }
 
-  /* ✅ Same glow effect, updated colors */
   .sideCard::before,
   .pageShell::before{
     content:"";
@@ -380,7 +376,7 @@ const css = `
     overflow: hidden;
   }
 
-  /* ✅ Tab button: professional look + click/focus */
+  /* ✅ Tabs desktop (same, but slightly more premium) */
   .tabBtn{
     width:100%;
     display:flex;
@@ -409,21 +405,17 @@ const css = `
     box-shadow: 0 16px 34px rgba(11,18,32,.10);
   }
 
-  .tabBtn:active{
-    transform: translateY(0px) scale(.99);
-  }
+  .tabBtn:active{ transform: translateY(0px) scale(.99); }
 
-  .tabBtn:focus-visible{
-    outline-color: var(--tabOutline);
-  }
+  .tabBtn:focus-visible{ outline-color: var(--tabOutline); }
 
-  /* ✅ Active tab */
+  /* ✅ Active: pro gradient + glow */
   .tabBtn.active{
     background: linear-gradient(180deg, var(--tabActive), rgba(255,255,255,.78));
     outline-color: var(--tabOutline);
+    box-shadow: 0 18px 40px rgba(37,99,235,.18);
   }
 
-  /* ✅ Active bottom bar (same style, new colors) */
   .tabBtn.active::after{
     content:"";
     position:absolute;
@@ -444,7 +436,7 @@ const css = `
 
   .tabBtn.active .tabDot{
     background: linear-gradient(90deg, var(--a1), var(--a2));
-    box-shadow: 0 0 0 6px rgba(37,99,235,.12);
+    box-shadow: 0 0 0 7px rgba(37,99,235,.12);
   }
 
   .tabText{
@@ -483,15 +475,22 @@ const css = `
     position: relative;
   }
 
+  .footerWrap{
+    margin-top: auto;
+    position: relative;
+    z-index: 1;
+  }
+
   @media (max-width: 980px){
     .wrap{ grid-template-columns: 1fr; }
     .sideCard{ height: auto; }
   }
 
+  /* ✅ MOBILE TABS: small chip style + pro active glow */
   @media (max-width: 740px){
     .wrap{ padding: 10px; gap: 10px; }
     .sideCard, .pageShell{ border-radius: 20px; }
-    .tabArrow{ display:inline-block; }
+    .tabArrow{ display:none; } /* mobile chips so arrow not needed */
 
     .tabList{
       flex-direction: row;
@@ -500,29 +499,55 @@ const css = `
       overflow-y: hidden;
       width: 100%;
       gap: 8px;
-      padding: 6px 8px 8px;
+      padding: 6px 8px 10px;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
       touch-action: pan-x;
       scroll-behavior: smooth;
       scrollbar-width: none;
+
+      /* ✅ feels premium */
+      scroll-snap-type: x mandatory;
     }
     .tabList::-webkit-scrollbar{ height: 0; }
 
+    /* ✅ small size chips */
     .tabBtn{
       width: auto;
-      min-width: 44vw;
-      max-width: 78vw;
-      padding: 10px 12px;
-      border-radius: 16px;
+      min-width: max-content;
+      padding: 9px 12px;
+      border-radius: 999px; /* chip */
       font-size: 12px;
+      box-shadow: 0 10px 24px rgba(11,18,32,.08);
+      scroll-snap-align: start;
     }
 
+    .tabDot{ width: 8px; height: 8px; }
+
     .tabText{
-      max-width: 52vw;
+      max-width: none;          /* ✅ don’t cut on mobile chips */
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    }
+
+    /* ✅ active chip: gradient glow + subtle ring */
+    .tabBtn.active{
+      background: linear-gradient(135deg,
+        rgba(37,99,235,.18),
+        rgba(6,182,212,.14),
+        rgba(255,255,255,.78)
+      );
+      box-shadow:
+        0 14px 30px rgba(37,99,235,.22),
+        0 0 0 2px rgba(37,99,235,.22);
+    }
+
+    /* ✅ active underline replaced by small glow bar inside chip */
+    .tabBtn.active::after{
+      left: 12px;
+      right: 12px;
+      bottom: 6px;
+      height: 2px;
+      opacity: .95;
     }
 
     .fadeLeft,

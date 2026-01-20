@@ -12,12 +12,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           position: sticky;
           top: 0;
           z-index: 50;
-          background: linear-gradient(
-            135deg,
-            #1f1147,
-            #2a145f,
-            #3a1c71
-          );
+          background: linear-gradient(135deg, #1f1147, #2a145f, #3a1c71);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -28,12 +23,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
         /* ================= TOP ACCENT ================= */
         .navAccent {
           height: 4px;
-          background: linear-gradient(
-            90deg,
-            #ec4899,
-            #facc15,
-            #a855f7
-          );
+          background: linear-gradient(90deg, #ec4899, #facc15, #a855f7);
         }
 
         .navInner {
@@ -112,6 +102,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
           transition: transform 180ms ease, box-shadow 180ms ease;
           min-width: 260px;
+          max-width: 520px;
         }
 
         .userCard:hover {
@@ -127,11 +118,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           place-items: center;
           font-weight: 800;
           color: #1f1147;
-          background: radial-gradient(
-            circle at 30% 30%,
-            #facc15,
-            #ec4899
-          );
+          background: radial-gradient(circle at 30% 30%, #facc15, #ec4899);
           border: 1px solid rgba(255, 255, 255, 0.35);
           user-select: none;
           flex: 0 0 auto;
@@ -144,6 +131,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           flex: 1;
         }
 
+        /* Desktop: keep neat single line (ellipsis ok) */
         .userInfo .name {
           font-weight: 800;
           font-size: 14px;
@@ -164,11 +152,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
         /* ================= LOGOUT BUTTON ================= */
         .logoutBtn {
           border: none;
-          background: linear-gradient(
-            135deg,
-            #ef4444,
-            #dc2626
-          );
+          background: linear-gradient(135deg, #ef4444, #dc2626);
           color: #ffffff;
           font-weight: 800;
           padding: 10px 16px;
@@ -176,6 +160,8 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           cursor: pointer;
           box-shadow: 0 14px 35px rgba(239, 68, 68, 0.45);
           transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+          flex: 0 0 auto;
+          white-space: nowrap;
         }
 
         .logoutBtn:hover {
@@ -198,12 +184,32 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
 
           .navRight {
             width: 100%;
-            justify-content: space-between;
+            flex-direction: column;   /* ✅ stack userCard + logout */
+            align-items: stretch;
+            gap: 10px;
           }
 
           .userCard {
-            flex: 1;
+            width: 100%;
             min-width: 0;
+            max-width: none;
+          }
+
+          /* ✅ MOBILE: show full text, no cut */
+          .userInfo .name,
+          .userInfo .email {
+            white-space: normal;      /* allow wrap */
+            overflow: visible;        /* no clipping */
+            text-overflow: unset;     /* remove ellipsis */
+            word-break: break-word;   /* long email break */
+            overflow-wrap: anywhere;  /* super safe */
+            line-height: 1.2;
+          }
+
+          .logoutBtn {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
           }
         }
 
@@ -230,9 +236,7 @@ export default function NavbarDoc({ displayName, displayEmail, logout }) {
           {/* Right */}
           <div className="navRight">
             <div className="userCard">
-              <div className="avatar">
-                {safeName.charAt(0).toUpperCase()}
-              </div>
+              <div className="avatar">{safeName.charAt(0).toUpperCase()}</div>
               <div className="userInfo">
                 <div className="name">{safeName}</div>
                 {safeEmail && <div className="email">{safeEmail}</div>}
