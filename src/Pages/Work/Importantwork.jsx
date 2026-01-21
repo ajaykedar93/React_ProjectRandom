@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Measure from "./Measure";
 import Calculator from "./Calculator";
-import NotesN from "./NotesN"; // ✅ ADD THIS (same folder)
+import NotesN from "../Notes/NotesN"; // ✅ ADD THIS (same folder)
 import Checklist from "./Checklist"; // ✅ already
 
 export default function Importantwork() {
