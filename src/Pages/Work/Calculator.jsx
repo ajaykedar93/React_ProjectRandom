@@ -6,14 +6,14 @@ export default function Calculator() {
 
   // History items: { expr, result }
   const [history, setHistory] = useState([]);
-  const [hIndex, setHIndex] = useState(-1); // -1 = current, else browsing history index
+  const [hIndex, setHIndex] = useState(-1);
 
-  // ✅ mobile/tab click feel
+  // Press feel
   const [pressedKey, setPressedKey] = useState(null);
 
   const isOp = (c) => ["+", "-", "×", "÷"].includes(c);
 
-  // ✅ Convert UI expression to JS expression (handles % properly)
+  // Convert UI expression to JS expression (handles % properly)
   const sanitizeExprForEval = (s) => {
     let x = s.replaceAll("×", "*").replaceAll("÷", "/");
 
@@ -147,7 +147,6 @@ export default function Calculator() {
 
       const item = { expr: t, result: out };
 
-      // ✅ keep only last 5 in state
       setHistory((prev) => {
         const next = [...prev, item];
         return next.length > 5 ? next.slice(next.length - 5) : next;
@@ -166,7 +165,7 @@ export default function Calculator() {
     }
   };
 
-  // ✅ History Prev/Next (with max 5)
+  // History Prev/Next
   const canPrev =
     history.length > 0 &&
     (hIndex === -1 ? history.length - 1 >= 0 : hIndex - 1 >= 0);
@@ -205,22 +204,19 @@ export default function Calculator() {
     setLiveResult(history[idx].result);
   };
 
-  // ✅ clear history via small cross icon
   const clearHistory = () => {
     setHistory([]);
     setHIndex(-1);
   };
 
-  // ✅ Key press feel (mobile/tab)
+  // Press feel
   const runKey = (k) => {
     setPressedKey(k.t);
     k.on?.();
     window.clearTimeout(runKey.__t);
-    runKey.__t = window.setTimeout(() => setPressedKey(null), 120);
+    runKey.__t = window.setTimeout(() => setPressedKey(null), 130);
   };
 
-  // ✅ Color mapping:
-  // + / - : red | × / ÷ : orange | % : blue | = : green
   const keys = useMemo(
     () => [
       { t: "C", type: "func", on: clearAll },
@@ -255,9 +251,9 @@ export default function Calculator() {
     <div className="calcPage">
       <style>{css}</style>
 
-      <div className="calcCard">
-        {/* Top Bar */}
-        <div className="topBar">
+      <div className="calcWrap">
+        {/* Header */}
+        <div className="hdr">
           <button
             className={`navBtn ${canPrev ? "" : "disabled"}`}
             onClick={goPrev}
@@ -268,7 +264,10 @@ export default function Calculator() {
             ◀
           </button>
 
-          <div className="topTitle">Calculator</div>
+          <div className="hdrMid">
+            <div className="hdrTitle">Calculator</div>
+            <div className="hdrSub">Clean • Bright • Mobile first</div>
+          </div>
 
           <button
             className={`navBtn ${canNext ? "" : "disabled"}`}
@@ -284,17 +283,18 @@ export default function Calculator() {
         {/* Screen */}
         <div className="screen">
           <div className="exprLine">{expr || "0"}</div>
-          <div className={`resLine ${liveResult === "Error" ? "err" : ""}`}>{liveResult}</div>
+          <div className={`resLine ${liveResult === "Error" ? "err" : ""}`}>
+            {liveResult}
+          </div>
         </div>
 
         {/* History */}
-        <div className="historyWrap">
-          <div className="historyHead">
-            <div className="historyTitle">History (Last 5)</div>
-
+        <div className="history">
+          <div className="hTop">
+            <div className="hTitle">History (Last 5)</div>
             <button
               type="button"
-              className={`historyClear ${history.length ? "" : "disabled"}`}
+              className={`hClear ${history.length ? "" : "disabled"}`}
               onClick={clearHistory}
               disabled={!history.length}
               title="Clear history"
@@ -305,9 +305,9 @@ export default function Calculator() {
           </div>
 
           {history.length === 0 ? (
-            <div className="historyEmpty">No calculations yet.</div>
+            <div className="hEmpty">No calculations yet.</div>
           ) : (
-            <div className="historyList">
+            <div className="hList">
               {history
                 .slice()
                 .reverse()
@@ -318,8 +318,8 @@ export default function Calculator() {
                     <button
                       key={`${h.expr}-${realIdx}`}
                       type="button"
-                      className={`historyRow ${activeRow ? "active" : ""}`}
-                      onClick={() => jumpToHistory(realIdx)} // ✅ clicking history opens it on top
+                      className={`hRow ${activeRow ? "active" : ""}`}
+                      onClick={() => jumpToHistory(realIdx)}
                       title="Open this calculation"
                     >
                       <span className="hExpr">{h.expr}</span>
@@ -332,7 +332,7 @@ export default function Calculator() {
           )}
         </div>
 
-        {/* Buttons */}
+        {/* Keypad */}
         <div className="pad">
           {keys.map((k, idx) => {
             const isPressed = pressedKey === k.t;
@@ -360,8 +360,8 @@ export default function Calculator() {
 
 const css = `
   *{ box-sizing:border-box; }
-  html, body{ height:100%; }
-
+  html, body{ height:100%; margin:0; padding:0; }
+  
   :root{
     --bg:#f4f7fb;
     --card:#ffffff;
@@ -369,223 +369,199 @@ const css = `
     --text:#0f172a;
     --muted:#64748b;
 
-    --resultBlue:#2563eb;
+    --shadow: 0 16px 44px rgba(17,24,39,.10);
+    --shadow2: 0 12px 28px rgba(17,24,39,.10);
 
     /* operator colors */
-    --red1:#ef4444;
-    --red2:#fb7185;
-
-    --orange1:#f59e0b;
-    --orange2:#fb923c;
-
-    --blue1:#2563eb;
-    --blue2:#60a5fa;
-
-    --green1:#16a34a;
-    --green2:#22c55e;
-
-    --shadow: 0 14px 32px rgba(17,24,39,.08);
-    --shadow2: 0 10px 18px rgba(17,24,39,.10);
+    --red1:#ef4444;  --red2:#fb7185;
+    --orange1:#f59e0b; --orange2:#fb923c;
+    --blue1:#2563eb; --blue2:#60a5fa;
+    --green1:#16a34a; --green2:#22c55e;
   }
 
+  /* ✅ IMPORTANT: NOT 100vh (so tabs won't break) */
   .calcPage{
-    min-height:100vh;
     width:100%;
-    background:var(--bg);
-    padding:0;
+    min-height:100%;
+    background: var(--bg);
+    padding: 0;
   }
 
-  .calcCard{
+  /* Edge-to-edge on mobile */
+  .calcWrap{
     width:100%;
-    min-height:100vh;
-    background:var(--card);
-    padding:16px;
+    min-height:100%;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
     display:flex;
     flex-direction:column;
     gap: 12px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
-  /* Top bar */
-  .topBar{
+  /* Header */
+  .hdr{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-  }
-
-  .topTitle{
-    font-family:"Georgia","Times New Roman",Times,serif;
-    font-size:18px;
-    font-weight:900;
-    color:#4b1d6d;
-    letter-spacing:.2px;
+    padding: 10px 10px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.92);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow2);
   }
 
   .navBtn{
-    width:46px;
-    height:46px;
-    border-radius:14px;
-    border:1px solid var(--border);
-    background:#fff;
-    box-shadow: var(--shadow);
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-weight: 950;
     cursor:pointer;
-    font-weight:900;
-    font-size:16px;
-    color:var(--text);
-    transition: transform .12s ease, box-shadow .12s ease;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    transition: transform .12s ease, filter .12s ease;
+    box-shadow: 0 10px 18px rgba(17,24,39,.08);
   }
   .navBtn:active{ transform: scale(.98); }
-  .navBtn.disabled{
-    opacity:.45;
-    cursor:not-allowed;
-    box-shadow:none;
+  .navBtn.disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+
+  .hdrMid{ text-align:center; flex: 1; }
+  .hdrTitle{
+    font-size: 16px;
+    font-weight: 1100;
+    letter-spacing: .2px;
+    color: #4b1d6d;
+    font-family: "Georgia","Times New Roman",Times,serif;
+  }
+  .hdrSub{
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
   }
 
   /* Screen */
   .screen{
-    border:1px solid var(--border);
-    border-radius:22px;
+    border-radius: 22px;
+    padding: 16px 14px;
     background: linear-gradient(180deg, #ffffff, #f7fbff);
+    border: 1px solid var(--border);
     box-shadow: var(--shadow);
-    padding:16px 14px;
-    min-height: 110px;
+    min-height: 120px;
     display:flex;
     flex-direction:column;
     justify-content:center;
-    gap:8px;
-    overflow:hidden;
+    gap: 8px;
   }
-
   .exprLine{
-    font-size:16px;
-    font-weight:900;
-    color: var(--text);
+    font-size: 16px;
+    font-weight: 950;
+    color: rgba(15,23,42,.75);
     text-align:right;
     word-break: break-word;
-    opacity:.85;
   }
-
   .resLine{
-    font-size:34px;
-    font-weight:900;
-    color: var(--resultBlue);
+    font-size: 40px;
+    font-weight: 1100;
+    color: rgba(15,23,42,.95);
     text-align:right;
     word-break: break-word;
-    line-height:1.08;
-    letter-spacing:.2px;
+    line-height: 1.06;
+    letter-spacing: .2px;
   }
-  .resLine.err{ color:#ef4444; }
+  .resLine.err{ color: #ef4444; }
 
   /* History */
-  .historyWrap{
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: var(--shadow);
+  .history{
+    border-radius: 20px;
     padding: 10px;
+    background: rgba(255,255,255,.92);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow2);
   }
-
-  .historyHead{
+  .hTop{
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:10px;
     margin-bottom: 8px;
   }
-
-  .historyTitle{
+  .hTitle{
     font-size: 12px;
-    font-weight: 900;
-    color: #334155;
+    font-weight: 1000;
+    color: rgba(15,23,42,.85);
   }
-
-  .historyClear{
-    width:26px;
-    height:26px;
-    border-radius: 9px;
-    border: 1px solid rgba(0,0,0,.08);
-    background:#fff;
-    color:#111827;
-    font-weight: 900;
+  .hClear{
+    width:28px;
+    height:28px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: rgba(15,23,42,.9);
+    font-weight: 1100;
     cursor:pointer;
-    box-shadow: 0 6px 12px rgba(0,0,0,.06);
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     transition: transform .12s ease, opacity .12s ease;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    line-height:1;
+    box-shadow: 0 8px 14px rgba(17,24,39,.08);
   }
-  .historyClear:active{ transform: scale(.97); }
-  .historyClear.disabled{
-    opacity:.45;
-    cursor:not-allowed;
-    box-shadow:none;
-  }
+  .hClear:active{ transform: scale(.98); }
+  .hClear.disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
 
-  .historyEmpty{
+  .hEmpty{
     font-size: 12px;
     font-weight: 800;
-    color: var(--muted);
+    color: rgba(15,23,42,.62);
     padding: 6px 4px;
   }
 
-  .historyList{
+  .hList{
     display:flex;
     flex-direction:column;
     gap: 8px;
-    max-height: 160px;
+    max-height: 150px;
     overflow:auto;
     padding-right: 2px;
   }
 
-  .historyRow{
-    width: 100%;
+  .hRow{
+    width:100%;
+    border-radius: 16px;
     border: 1px solid rgba(0,0,0,.06);
-    border-radius: 14px;
     background: #f8fafc;
     padding: 10px 10px;
-    cursor: pointer;
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap: 8px;
     text-align:left;
+    cursor:pointer;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    transition: transform .12s ease, background .12s ease;
+    transition: transform .12s ease, background .12s ease, outline .12s ease;
   }
-  .historyRow:active{ transform: scale(.99); }
-
-  .historyRow.active{
+  .hRow:active{ transform: scale(.99); }
+  .hRow.active{
     outline: 2px solid rgba(37,99,235,.18);
     background: #eef2ff;
   }
 
   .hExpr{
     font-size: 12px;
-    font-weight: 900;
-    color: #0f172a;
+    font-weight: 1000;
+    color: rgba(15,23,42,.92);
     max-width: 55%;
     overflow:hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
-  .hEq{
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--muted);
-  }
-
+  .hEq{ font-size: 12px; font-weight: 900; color: rgba(15,23,42,.55); }
   .hRes{
     font-size: 12px;
-    font-weight: 900;
-    color: #0f172a;
+    font-weight: 1000;
+    color: rgba(15,23,42,.92);
     max-width: 35%;
     overflow:hidden;
     text-overflow: ellipsis;
@@ -593,47 +569,46 @@ const css = `
     text-align:right;
   }
 
-  /* Keypad */
+  /* Keypad: big + sticky bottom */
   .pad{
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    padding: 12px 0 0;
     display:grid;
     grid-template-columns: repeat(4, 1fr);
-    gap:12px;
-    flex: 1;
-    align-content:stretch;
+    gap: 12px;
   }
 
   .btn{
     position:relative;
-    height: 70px;
-    border-radius:18px;
-    border:1px solid var(--border);
-    background:#fff;
-    color: var(--text);
-    font-weight:900;
-    font-size: 22px;
+    height: 78px;
+    border-radius: 22px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: rgba(15,23,42,.95);
+    font-weight: 1100;
+    font-size: 26px;
     cursor:pointer;
     box-shadow: var(--shadow2);
-    transition: transform .10s ease, box-shadow .12s ease, filter .12s ease;
     overflow:hidden;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     user-select:none;
+    transition: transform .10s ease, filter .12s ease;
   }
+
+  .btn:hover{ filter: brightness(1.02); }
+  .btn:active{ transform: translateY(1px) scale(.985); }
+  .btn.pressed{ transform: translateY(1px) scale(.985); }
 
   .btnText{ position:relative; z-index:2; }
 
-  .btn:hover{ filter: brightness(1.01); }
-  .btn:active{ transform: translateY(1px) scale(.985); box-shadow: var(--shadow); }
-
-  .btn.pressed{
-    transform: translateY(1px) scale(.985);
-    box-shadow: var(--shadow);
-  }
-
+  /* Ripple */
   .btn .ripple{
     position:absolute;
     inset:0;
-    background: radial-gradient(circle at center, rgba(37,99,235,.18), transparent 55%);
+    background: radial-gradient(circle at center, rgba(37,99,235,.14), transparent 55%);
     opacity:0;
     transform: scale(.85);
     transition: opacity .18s ease, transform .18s ease;
@@ -646,48 +621,47 @@ const css = `
     transform: scale(1);
   }
 
-  .btn.func{ background:#f8fafc; color:#0f172a; }
+  .btn.func{
+    background: #f8fafc;
+  }
 
   .btn.op.red{
+    background: linear-gradient(135deg, rgba(239,68,68,.20), rgba(251,113,133,.16));
     border: 1px solid rgba(239,68,68,.22);
-    background: linear-gradient(135deg, var(--red1), var(--red2));
-    color:#fff;
+    color: rgba(15,23,42,.95);
   }
 
   .btn.op.orange{
-    border: 1px solid rgba(245,158,11,.25);
-    background: linear-gradient(135deg, var(--orange1), var(--orange2));
-    color:#fff;
+    background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(251,146,60,.16));
+    border: 1px solid rgba(245,158,11,.24);
+    color: rgba(15,23,42,.95);
   }
 
   .btn.op.blue{
+    background: linear-gradient(135deg, rgba(37,99,235,.20), rgba(96,165,250,.16));
     border: 1px solid rgba(37,99,235,.22);
-    background: linear-gradient(135deg, var(--blue1), var(--blue2));
-    color:#fff;
+    color: rgba(15,23,42,.95);
   }
 
   .btn.eq.green{
-    border: 1px solid rgba(22,163,74,.22);
-    background: linear-gradient(135deg, var(--green2), var(--green1));
-    color:#fff;
+    background: linear-gradient(135deg, rgba(34,197,94,.22), rgba(22,163,74,.16));
+    border: 1px solid rgba(34,197,94,.22);
+    color: rgba(15,23,42,.95);
   }
 
   .btn.wide{ grid-column: span 2; }
 
-  @media (min-width:768px){
-    .calcPage{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-    }
-    .calcCard{
-      min-height:auto;
+  /* Desktop */
+  @media (min-width: 900px){
+    .calcWrap{
       max-width: 560px;
-      border-radius: 22px;
-      box-shadow: 0 24px 70px rgba(17,24,39,.12);
+      margin: 22px auto;
+      background: rgba(255,255,255,.70);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      box-shadow: 0 26px 80px rgba(17,24,39,.12);
     }
-    .btn{ height: 76px; font-size:24px; }
-    .resLine{ font-size: 38px; }
+    .btn{ height: 82px; font-size: 28px; }
+    .resLine{ font-size: 44px; }
   }
 `;

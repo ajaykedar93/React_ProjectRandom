@@ -6,8 +6,8 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // ✅ same as your file
-  const API_BASE =  "https://express-projectrandom.onrender.com";
+  // ✅ Backend base (Render)
+  const API_BASE = "https://express-projectrandom.onrender.com";
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -64,7 +64,8 @@ export default function Login() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      credentials: "include", // ✅ safe (if backend uses cookies too)
+      // ✅ IMPORTANT: remove credentials unless you use cookie auth
+      // credentials: "include",
     });
 
     const text = await res.text();
@@ -77,19 +78,16 @@ export default function Login() {
     return data || {};
   }
 
-  // ✅ Robust token extractor (fix for 401)
+  // ✅ Robust token extractor (optional but good)
   function extractToken(data) {
-    // Most common keys
     if (data?.token) return data.token;
     if (data?.accessToken) return data.accessToken;
     if (data?.jwt) return data.jwt;
 
-    // Sometimes nested
     if (data?.user?.token) return data.user.token;
     if (data?.user?.accessToken) return data.user.accessToken;
     if (data?.user?.jwt) return data.user.jwt;
 
-    // Sometimes inside "data"
     if (data?.data?.token) return data.data.token;
     if (data?.data?.accessToken) return data.data.accessToken;
     if (data?.data?.jwt) return data.data.jwt;
@@ -112,11 +110,8 @@ export default function Login() {
       });
 
       if (isAdmin) {
-        // ✅ Admin token (same logic)
         const adminToken = extractToken(data);
         if (adminToken) localStorage.setItem("admin_token", adminToken);
-
-        // keep clean for user token
         localStorage.removeItem("token");
 
         const adminObj = data.admin || data.user || {};
@@ -127,20 +122,15 @@ export default function Login() {
           "Admin Login Success",
           data?.message || "Logged in successfully ✅"
         );
-
         setTimeout(() => navigate("/admin", { replace: true }), 600);
       } else {
-        // ✅ USER token save (fix)
         localStorage.removeItem("admin_token");
 
         const userToken = extractToken(data);
         if (userToken) localStorage.setItem("token", userToken);
-        else {
-          // If backend truly doesn't return token, keep clean
-          localStorage.removeItem("token");
-        }
+        else localStorage.removeItem("token");
 
-        // ✅ keep same login call
+        // if your backend returns user object
         login(data.user);
 
         openModal(
@@ -148,7 +138,6 @@ export default function Login() {
           "Login Success",
           data?.message || "Logged in successfully ✅"
         );
-
         setTimeout(() => navigate("/dashboard", { replace: true }), 600);
       }
     } catch (err) {
@@ -216,6 +205,9 @@ export default function Login() {
               name="username"
               value={form.username}
               onChange={handleChange}
+              placeholder={isAdmin ? "admin@gmail.com" : "Email or Mobile"}
+              type={isAdmin ? "email" : "text"}
+              autoComplete="username"
             />
             {errors.username && <div className="eTxt">{errors.username}</div>}
           </div>
@@ -230,6 +222,8 @@ export default function Login() {
               type="password"
               value={form.password}
               onChange={handleChange}
+              placeholder="Enter password"
+              autoComplete="current-password"
             />
             {errors.password && <div className="eTxt">{errors.password}</div>}
           </div>

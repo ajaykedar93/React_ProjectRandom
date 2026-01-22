@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import Measure from "./Measure";
 import Calculator from "./Calculator";
-import NotesN from "../Notes/NotesN"; // ✅ ADD THIS (same folder)
-import Checklist from "./Checklist"; // ✅ already
+import NotesN from "../Notes/NotesN";
+import Checklist from "./Checklist";
 
 export default function Importantwork() {
   const tabs = useMemo(
@@ -17,11 +17,35 @@ export default function Importantwork() {
 
   const [active, setActive] = useState("measure");
 
+  // ✅ Ripple effect (pure CSS + JS)
+  const makeRipple = (e) => {
+    const btn = e.currentTarget;
+    const old = btn.querySelector(".rip");
+    if (old) old.remove();
+
+    const circle = document.createElement("span");
+    circle.className = "rip";
+
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    circle.style.width = circle.style.height = `${size}px`;
+    circle.style.left = `${e.clientX - rect.left - size / 2}px`;
+    circle.style.top = `${e.clientY - rect.top - size / 2}px`;
+
+    btn.appendChild(circle);
+    circle.addEventListener("animationend", () => circle.remove());
+  };
+
+  const onTabClick = (key) => (e) => {
+    makeRipple(e);
+    setActive(key);
+  };
+
   return (
     <div className="impTabsPage">
       <style>{css}</style>
 
-      {/* ✅ Full width header (no outside padding) */}
+      {/* ✅ Premium header */}
       <div className="head">
         <div className="headLeft">
           <div className="bolt" aria-hidden="true">
@@ -38,7 +62,7 @@ export default function Importantwork() {
         </div>
       </div>
 
-      {/* ✅ Full width tabs (edge-to-edge) */}
+      {/* ✅ Tabs */}
       <div className="stripWrap">
         <div className="strip" role="tablist" aria-label="Important Work Tabs">
           {tabs.map((t) => {
@@ -50,21 +74,22 @@ export default function Importantwork() {
                 role="tab"
                 aria-selected={isActive}
                 className={`chip ${isActive ? "active" : ""}`}
-                onClick={() => setActive(t.key)}
+                onClick={onTabClick(t.key)}
               >
                 <span className="emoji" aria-hidden="true">
                   {t.icon}
                 </span>
                 <span className="lbl">{t.label}</span>
+                {/* ✅ subtle shine layer */}
+                <span className="shine" aria-hidden="true" />
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ✅ Full screen panel with ZERO padding (so inner pages can be full screen) */}
+      {/* Panel */}
       <div className="panel">
-        {/* Panel top info (small) */}
         <div className="panelTop">
           <div className="panelTitle">
             {active === "measure" && "Measure"}
@@ -80,15 +105,10 @@ export default function Importantwork() {
           </div>
         </div>
 
-        {/* ✅ content: edge-to-edge */}
         <div className="contentShell">
           {active === "measure" && <Measure />}
           {active === "calculator" && <Calculator />}
-
-          {/* ✅ SHOW Notes page here */}
           {active === "notes" && <NotesN />}
-
-          {/* ✅ SHOW Checklist page here */}
           {active === "checklist" && <Checklist />}
         </div>
       </div>
@@ -111,12 +131,20 @@ const css = `
     --a3:#06b6d4;  /* cyan */
 
     --soft:#eef2ff;
+    --shadow: 0 14px 36px rgba(17,24,39,.08);
+    --shadow2: 0 18px 46px rgba(37,99,235,.16);
+
+    --pad: clamp(12px, 2.8vw, 18px);
   }
 
   .impTabsPage{
     width:100%;
     min-height:100vh;
-    background: var(--bg);
+    background:
+      radial-gradient(900px 520px at 15% 0%, rgba(37,99,235,.10), transparent 60%),
+      radial-gradient(900px 520px at 90% 10%, rgba(124,58,237,.10), transparent 60%),
+      radial-gradient(900px 520px at 50% 95%, rgba(6,182,212,.10), transparent 60%),
+      linear-gradient(180deg, #ffffff, var(--bg));
     overflow-x:hidden;
   }
 
@@ -127,8 +155,10 @@ const css = `
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    padding: 14px 14px;
-    background: linear-gradient(135deg, rgba(37,99,235,.10), rgba(124,58,237,.10));
+    padding: 14px var(--pad);
+    background: rgba(255,255,255,.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
   }
 
@@ -142,12 +172,13 @@ const css = `
   .bolt{
     width:44px;
     height:44px;
-    border-radius:14px;
+    border-radius:16px;
     display:grid;
     place-items:center;
     font-size:18px;
     background: linear-gradient(135deg, rgba(37,99,235,.18), rgba(124,58,237,.14));
     border: 1px solid rgba(37,99,235,.18);
+    box-shadow: var(--shadow);
     flex:0 0 auto;
   }
 
@@ -179,6 +210,7 @@ const css = `
     background:#fff;
     border:1px solid var(--border);
     color: rgba(17,24,39,.75);
+    box-shadow: 0 10px 22px rgba(17,24,39,.06);
     flex:0 0 auto;
   }
 
@@ -186,7 +218,7 @@ const css = `
   .stripWrap{
     width:100%;
     border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,.90);
+    background: rgba(255,255,255,.78);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -196,7 +228,7 @@ const css = `
     display:flex;
     gap:10px;
     overflow-x:auto;
-    padding: 10px 12px;
+    padding: 10px var(--pad) 12px;
     scrollbar-width:none;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
@@ -210,57 +242,83 @@ const css = `
     display:flex;
     align-items:center;
     gap:8px;
-    padding:10px 12px;
-    border-radius:14px;
-    background: #fff;
-    border: 1px solid var(--border);
-    box-shadow: 0 10px 24px rgba(17,24,39,.06);
-    font-weight:900;
-    color: rgba(17,24,39,.85);
-    min-width: 140px;
-    transition: transform .14s ease, box-shadow .14s ease, background .14s ease, border-color .14s ease, outline-color .14s ease;
+    padding:10px 13px;
+    border-radius:999px;
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(17,24,39,.08);
+    box-shadow: 0 12px 26px rgba(17,24,39,.06);
+    font-weight:950;
+    color: rgba(17,24,39,.86);
+    transition: transform .14s ease, box-shadow .14s ease, background .14s ease, border-color .14s ease;
     outline: 2px solid transparent;
     position: relative;
+    overflow:hidden;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  .chip:hover{
-    transform: translateY(-1px);
-    box-shadow: 0 16px 36px rgba(17,24,39,.10);
+  /* subtle shine */
+  .chip .shine{
+    position:absolute;
+    inset:0;
+    background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.35) 45%, transparent 90%);
+    transform: translateX(-120%);
+    transition: transform .6s ease;
+    pointer-events:none;
+  }
+  @media (hover:hover){
+    .chip:hover .shine{ transform: translateX(120%); }
   }
 
-  .chip:active{ transform: translateY(0px) scale(.99); }
+  .chip:active{ transform: scale(.985); }
 
   .chip:focus-visible{
-    outline-color: rgba(37,99,235,.35);
+    outline-color: rgba(37,99,235,.30);
   }
 
   .chip .emoji{ font-size:16px; }
-
   .chip .lbl{
     font-size:12px;
-    max-width: 110px;
-    overflow:hidden;
-    text-overflow:ellipsis;
     white-space:nowrap;
   }
 
+  /* ✅ Active tab: glow + underline + premium gradient */
   .chip.active{
-    background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(124,58,237,.12), rgba(6,182,212,.08));
-    border-color: rgba(37,99,235,.28);
-    outline: 2px solid rgba(37,99,235,.14);
-    box-shadow: 0 18px 42px rgba(37,99,235,.18);
+    background: linear-gradient(135deg,
+      rgba(37,99,235,.18),
+      rgba(124,58,237,.16),
+      rgba(6,182,212,.12)
+    );
+    border-color: rgba(37,99,235,.30);
+    box-shadow:
+      0 16px 36px rgba(37,99,235,.22),
+      0 0 0 2px rgba(37,99,235,.14);
   }
 
   .chip.active::after{
     content:"";
     position:absolute;
-    left: 12px;
-    right: 12px;
+    left: 14px;
+    right: 14px;
     bottom: 7px;
     height: 2px;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
     opacity: .95;
+  }
+
+  /* ✅ Ripple */
+  .rip{
+    position:absolute;
+    border-radius:999px;
+    background: rgba(37,99,235,.22);
+    transform: scale(0);
+    animation: ripple .55s ease-out;
+    pointer-events:none;
+  }
+  @keyframes ripple{
+    to{ transform: scale(2.6); opacity:0; }
   }
 
   /* PANEL */
@@ -273,13 +331,13 @@ const css = `
   }
 
   .panelTop{
-    padding: 12px 14px;
+    padding: 12px var(--pad);
   }
 
   .panelTitle{
     font-size:14px;
     font-weight: 1000;
-    color: var(--text);
+    color: rgba(17,24,39,.92);
     margin-bottom: 3px;
   }
 
@@ -296,64 +354,23 @@ const css = `
     margin: 0;
   }
 
-  /* ✅ MOBILE: PROFESSIONAL TABS (small + modern + glow) */
+  /* Mobile */
   @media (max-width: 640px){
-    .strip{
-      gap: 8px;
-      padding: 10px 10px 12px;
-      scroll-snap-type: x mandatory;
-    }
-
-    .chip{
-      min-width: max-content;
-      border-radius: 999px;          /* chip style */
-      padding: 9px 12px;             /* small */
-      box-shadow: 0 10px 22px rgba(17,24,39,.08);
-      background: rgba(255,255,255,.82);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      scroll-snap-align: start;
-    }
-
-    .chip .emoji{ font-size: 15px; }
-
-    /* ✅ allow label to show more (no cut) */
-    .chip .lbl{
-      max-width: none;
-      white-space: nowrap;
-      overflow: visible;
-      text-overflow: unset;
-    }
-
-    /* ✅ active = modern ring + glow */
-    .chip.active{
-      background: linear-gradient(135deg,
-        rgba(37,99,235,.22),
-        rgba(124,58,237,.18),
-        rgba(6,182,212,.14)
-      );
-      box-shadow:
-        0 16px 34px rgba(37,99,235,.26),
-        0 0 0 2px rgba(37,99,235,.22);
-      border-color: rgba(37,99,235,.35);
-    }
-
-    .chip.active::after{
-      left: 14px;
-      right: 14px;
-      bottom: 6px;
-      height: 2px;
-    }
-
-    /* header text small */
     .title{ font-size: 17px; }
     .sub{ max-width: 70vw; }
+    .chip{ padding: 9px 12px; }
+    .chip .emoji{ font-size: 15px; }
   }
 
-  /* Desktop spacing */
+  /* Desktop: make tabs look centered like professional navbar */
   @media (min-width: 900px){
     .sub{ max-width: 520px; }
-    .chip{ min-width: 160px; }
+    .strip{
+      justify-content:center;
+      gap: 12px;
+      padding: 12px 18px 14px;
+    }
+    .chip{ padding: 11px 16px; }
     .panel{ min-height: calc(100vh - 124px); }
   }
 `;
