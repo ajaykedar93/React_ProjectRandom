@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext.jsx";
-import DashboardStatic from "./DashboardStatic.jsx"; // ✅ ADD THIS
+import DashboardStatic from "./DashboardStatic.jsx";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Use Auth Context only
   const { user, loading, logout } = useAuth();
 
   const adminName = user?.name || user?.full_name || "Admin";
@@ -15,22 +14,19 @@ export default function AdminDashboard() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Admin Tabs (content opens below dashboard via <Outlet/>)
   const tabs = useMemo(
     () => [
       { key: "Dashboard", icon: "📊", path: "/admin" },
-      { key: "Admin", icon: "🛡️", path: "/admin/admin" }, // ✅ NEW TAB
+      { key: "Admin", icon: "🛡️", path: "/admin/admin" },
       { key: "Users", icon: "👥", path: "/admin/users" },
-      { key: "Footer", icon: "⚙️", path: "/admin/footer-admin" },
     ],
     []
   );
 
   const activeKey = useMemo(() => {
     if (location.pathname === "/admin" || location.pathname === "/admin/") return "Dashboard";
-    if (location.pathname.startsWith("/admin/admin")) return "Admin"; // ✅ NEW
+    if (location.pathname.startsWith("/admin/admin")) return "Admin";
     if (location.pathname.startsWith("/admin/users")) return "Users";
-    if (location.pathname.startsWith("/admin/footer-admin")) return "Footer";
     return "Dashboard";
   }, [location.pathname]);
 
@@ -44,7 +40,6 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // ✅ Safety redirect (only if NOT logged-in, after loading finished)
   useEffect(() => {
     if (loading) return;
     if (!user) navigate("/login", { replace: true });
@@ -71,14 +66,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="ad">
+    <div className={`ad ${menuOpen ? "lock" : ""}`}>
       <style>{css}</style>
 
-      <div className="safeTop" />
-
-      {/* ✅ Navbar (always visible) */}
+      {/* ✅ Sticky Nav */}
       <header className="nav">
-        <div className="navLeft">
+        <div className="navLeft" role="button" tabIndex={0} onClick={() => goTab(tabs[0])}>
           <div className="brandMark" aria-hidden="true">
             A
           </div>
@@ -102,7 +95,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* ✅ Drawer Menu */}
+      {/* ✅ Drawer */}
       <div className={`overlay ${menuOpen ? "show" : ""}`} onClick={() => setMenuOpen(false)}>
         <aside className={`drawer ${menuOpen ? "show" : ""}`} onClick={(e) => e.stopPropagation()}>
           <div className="drawerTop">
@@ -131,7 +124,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* ✅ Tabs */}
           <div className="drawerTabs" aria-label="Admin tabs mobile">
             {tabs.map((t) => (
               <button
@@ -144,6 +136,9 @@ export default function AdminDashboard() {
                   {t.icon}
                 </span>
                 <span className="dTxt">{t.key}</span>
+                <span className="chev" aria-hidden="true">
+                  →
+                </span>
               </button>
             ))}
           </div>
@@ -152,16 +147,23 @@ export default function AdminDashboard() {
             <button className="primaryBtn" type="button" onClick={handleLogout}>
               Logout
             </button>
+
+            <div className="drawerHint">
+              Tip: ESC to close • Swipe / Click outside
+            </div>
           </div>
         </aside>
       </div>
 
-      {/* ✅ Main Page (Dashboard + below content area) */}
+      {/* ✅ Main (edge-to-edge on mobile, full on desktop) */}
       <main className="main">
-        {/* ✅ Dashboard section (always visible) */}
+        {/* ✅ Hero always visible */}
         <section className="heroOne">
           <div className="heroCard">
-            <div className="badge">Admin</div>
+            <div className="heroTop">
+              <div className="badge">Administrator</div>
+              <div className="pulseDot" aria-hidden="true" />
+            </div>
 
             <h1 className="hTitle">
               Welcome, <span className="nameGlow">{adminName}</span>
@@ -176,26 +178,44 @@ export default function AdminDashboard() {
                 <div className="miniLabel">Role</div>
                 <div className="miniVal">Administrator</div>
               </div>
+              <div className="mini">
+                <div className="miniLabel">Status</div>
+                <div className="miniVal ok">Online</div>
+              </div>
+            </div>
+
+            <div className="heroGlow" aria-hidden="true" />
+          </div>
+        </section>
+
+        {/* ✅ Content area */}
+        <section className="tabArea">
+          <div className="tabCard">
+            <div className="tabHead">
+              <div className="tabTitle">{activeKey}</div>
+              <div className="tabPills">
+                <span className="pill">Secure</span>
+                <span className="pill soft">Live</span>
+              </div>
+            </div>
+
+            <div className="tabBody">
+              {isDashboard ? <DashboardStatic /> : <Outlet />}
             </div>
           </div>
         </section>
 
-        {/* ✅ Below dashboard: show dashboard static by default */}
-        <section className="tabArea">
-          <div className="tabCard">
-            {isDashboard ? <DashboardStatic /> : <Outlet />}
-          </div>
-        </section>
-
-        {/* ✅ Footer (always visible) */}
+        {/* ✅ Footer */}
         <footer className="foot">
           <div className="footLeft">
             <span className="footTag">Admin</span>
             <span className="footName">Ajay Kedar</span>
           </div>
-        </footer>
 
-        <div className="safeBottom" />
+          <div className="footRight">
+            <span className="footSmall">© {new Date().getFullYear()} Admin Panel</span>
+          </div>
+        </footer>
       </main>
     </div>
   );
@@ -210,13 +230,18 @@ const css = `
     --ink:#0b1220;
     --muted: rgba(11,18,32,.65);
     --shadow: 0 30px 90px rgba(0,0,0,.16);
+    --glass: rgba(255,255,255,.62);
   }
 
   *{ box-sizing:border-box; }
-  body{ margin:0; }
+  html, body { height: 100%; }
+  body{ margin:0; overflow-x:hidden; }
+  #root{ min-height:100%; }
 
+  /* ✅ full screen base */
   .ad{
     min-height:100vh;
+    width: 100%;
     background:
       radial-gradient(900px 540px at 10% 10%, rgba(255, 0, 150, .22), transparent 60%),
       radial-gradient(900px 540px at 90% 18%, rgba(0, 200, 255, .20), transparent 58%),
@@ -225,53 +250,70 @@ const css = `
     color:var(--ink);
   }
 
-  .safeTop{
-    height: calc(env(safe-area-inset-top, 0px) + 6px);
-    width: 100%;
-  }
+  /* lock scroll when drawer open */
+  .ad.lock{ height:100vh; overflow:hidden; }
 
+  /* ✅ Sticky Nav edge-to-edge */
   .nav{
     position:sticky;
     top:0;
     z-index:50;
+    width: 100%;
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    padding: 12px 16px;
+    padding: 12px 14px; /* small safe padding */
     border-bottom: 1px solid rgba(255,255,255,.55);
-    background: rgba(255,255,255,.58);
+    background: rgba(255,255,255,.55);
     backdrop-filter: blur(14px);
   }
 
-  .navLeft{ display:flex; align-items:center; gap:12px; min-width: 220px; }
+  .navLeft{ display:flex; align-items:center; gap:12px; min-width: 220px; cursor:pointer; }
   .brandMark{
-    width:40px; height:40px; border-radius:14px;
+    width:42px; height:42px; border-radius:16px;
     display:flex; align-items:center; justify-content:center;
-    font-weight:1000;
-    background: rgba(255,255,255,.70);
+    font-weight:1100;
+    background: rgba(255,255,255,.78);
     border: 1px solid rgba(11,18,32,.10);
     box-shadow: 0 18px 40px rgba(0,0,0,.10);
+    position:relative;
+    overflow:hidden;
   }
-  .brandTitle{ font-weight:1000; letter-spacing:.2px; }
-  .brandSub{ font-weight:800; font-size:12px; color: var(--muted); margin-top:2px; }
+  .brandMark::after{
+    content:"";
+    position:absolute; inset:-40%;
+    background: radial-gradient(circle, rgba(124,58,237,.20), transparent 60%);
+    animation: floatGlow 6s ease-in-out infinite;
+  }
+  @keyframes floatGlow{
+    0%,100%{ transform: translate(-6%, -6%) rotate(0deg); }
+    50%{ transform: translate(8%, 10%) rotate(35deg); }
+  }
+
+  .brandTitle{ font-weight:1100; letter-spacing:.2px; }
+  .brandSub{ font-weight:900; font-size:12px; color: var(--muted); margin-top:2px; }
+
   .navRight{ display:flex; align-items:center; justify-content:flex-end; width:100%; }
 
   .burger{
-    width: 44px; height: 44px;
+    width: 46px; height: 46px;
     border-radius: 16px;
     border: 1px solid rgba(11,18,32,.10);
-    background: rgba(255,255,255,.70);
+    background: rgba(255,255,255,.75);
     display:flex;
     align-items:center; justify-content:center; gap:4px;
     flex-direction:column;
     cursor:pointer;
+    transition: transform .15s ease;
   }
+  .burger:hover{ transform: translateY(-1px); }
   .burger span{ width:18px; height:2px; border-radius:99px; background: rgba(11,18,32,.85); }
 
+  /* ✅ overlay full */
   .overlay{
     position:fixed; inset:0;
-    background: rgba(0,0,0,.35);
+    background: rgba(0,0,0,.38);
     z-index:60;
     opacity:0;
     pointer-events:none;
@@ -279,47 +321,61 @@ const css = `
   }
   .overlay.show{ opacity:1; pointer-events:auto; }
 
+  /* ✅ drawer full height, edge to edge */
   .drawer{
     position:absolute; top:0; right:0; height:100%;
-    width: min(360px, 88vw);
+    width: min(380px, 92vw);
     background: rgba(255,255,255,.92);
     border-left: 1px solid rgba(255,255,255,.70);
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
     transform: translateX(110%);
-    transition: transform .18s ease;
+    transition: transform .20s ease;
     padding: 14px;
     display:flex; flex-direction:column; gap:12px;
+    box-shadow: -30px 0 90px rgba(0,0,0,.18);
   }
   .drawer.show{ transform: translateX(0); }
 
   .drawerTop{ display:flex; align-items:center; justify-content:space-between; }
-  .drawerTitle{ font-weight:1000; }
+  .drawerTitle{ font-weight:1100; }
   .closeBtn{
     border:none;
     background: rgba(11,18,32,.06);
     border: 1px solid rgba(11,18,32,.10);
-    width: 40px; height: 40px;
-    border-radius: 14px;
+    width: 42px; height: 42px;
+    border-radius: 16px;
     cursor:pointer;
-    font-weight: 1000;
+    font-weight: 1100;
   }
 
   .drawerProfile{
     display:flex; gap:12px; align-items:center;
     padding: 12px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.70);
+    border-radius: 20px;
+    background: rgba(255,255,255,.72);
     border: 1px solid rgba(11,18,32,.08);
+    position:relative;
+    overflow:hidden;
   }
+  .drawerProfile::before{
+    content:"";
+    position:absolute; inset:-30%;
+    background: radial-gradient(circle, rgba(34,197,94,.20), transparent 55%);
+    filter: blur(2px);
+  }
+
   .avatar{
-    width: 46px; height: 46px; border-radius: 16px;
+    width: 48px; height: 48px; border-radius: 16px;
     display:flex; align-items:center; justify-content:center;
-    font-weight: 1000;
+    font-weight: 1100;
     background: rgba(34,197,94,.18);
     border: 1px solid rgba(34,197,94,.25);
+    position:relative;
+    z-index:1;
   }
-  .role{ font-size: 12px; font-weight: 1000; color: rgba(11,18,32,.70); margin-bottom: 2px; }
-  .pname{ font-size: 16px; font-weight: 1000; line-height: 1.1; }
+  .pinfo{ position:relative; z-index:1; }
+  .role{ font-size: 12px; font-weight: 1100; color: rgba(11,18,32,.70); margin-bottom: 2px; }
+  .pname{ font-size: 16px; font-weight: 1100; line-height: 1.1; }
   .shineName{
     background: linear-gradient(90deg, rgba(34,197,94,.95), rgba(59,130,246,.95), rgba(236,72,153,.95));
     -webkit-background-clip:text;
@@ -327,69 +383,100 @@ const css = `
     color: transparent;
     text-shadow: 0 10px 30px rgba(0,0,0,.10);
   }
-  .pemail{ font-size: 12px; font-weight: 850; color: rgba(11,18,32,.62); margin-top: 3px; word-break: break-all; }
+  .pemail{ font-size: 12px; font-weight: 900; color: rgba(11,18,32,.62); margin-top: 3px; word-break: break-all; }
 
-  .drawerTabs{ display:flex; flex-direction:column; gap:8px; }
+  .drawerTabs{ display:flex; flex-direction:column; gap:8px; margin-top: 2px; }
   .drawerTab{
     width:100%;
     display:flex; align-items:center; gap:10px;
     border:none;
     padding: 12px 12px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.72);
+    border-radius: 18px;
+    background: rgba(255,255,255,.78);
     border: 1px solid rgba(11,18,32,.08);
     cursor:pointer;
-    font-weight: 950;
-    color: rgba(11,18,32,.85);
+    font-weight: 1000;
+    color: rgba(11,18,32,.88);
+    transition: transform .12s ease, background .12s ease;
   }
+  .drawerTab:hover{ transform: translateY(-1px); background: rgba(255,255,255,.92); }
   .drawerTab.active{ background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.30); }
+  .dIco{ width: 26px; display:inline-flex; justify-content:center; }
+  .chev{ margin-left:auto; opacity:.7; font-weight:1100; }
 
   .drawerBottom{
     margin-top:auto;
     display:flex;
     flex-direction:column;
     gap:10px;
-    padding-bottom: 20px;
+    padding-bottom: 8px;
   }
 
   .primaryBtn{
     border:none;
     padding: 12px 14px;
-    border-radius: 16px;
-    font-weight: 1000;
+    border-radius: 18px;
+    font-weight: 1100;
     cursor:pointer;
     color:#0b1220;
     background: linear-gradient(90deg, rgba(34,197,94,.85), rgba(59,130,246,.75), rgba(236,72,153,.65));
     box-shadow: 0 18px 50px rgba(0,0,0,.14);
+    transition: transform .14s ease;
+  }
+  .primaryBtn:hover{ transform: translateY(-1px); }
+
+  .drawerHint{
+    font-size: 12px;
+    font-weight: 900;
+    color: rgba(11,18,32,.62);
+    text-align:center;
   }
 
+  /* ✅ MAIN: edge-to-edge on mobile, full width on desktop */
   .main{
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 14px 16px 0px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 14px 14px 18px; /* minimal padding */
   }
 
-  .heroOne{ margin-top: 10px; }
+  .heroOne{ margin-top: 8px; }
   .heroCard{
+    width: 100%;
     background: rgba(255,255,255,.72);
     border: 1px solid rgba(255,255,255,.62);
-    border-radius: 24px;
+    border-radius: 26px;
     padding: 18px;
     box-shadow: var(--shadow);
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    position:relative;
+    overflow:hidden;
   }
 
+  .heroTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .badge{
     display:inline-block;
-    padding: 6px 10px;
+    padding: 7px 12px;
     border-radius: 999px;
-    font-weight: 1000;
+    font-weight: 1100;
     font-size: 12px;
     background: rgba(34,197,94,.14);
     border: 1px solid rgba(34,197,94,.25);
   }
 
-  .hTitle{ margin: 10px 0 6px; font-size: clamp(22px, 3.2vw, 34px); font-weight: 1000; }
+  .pulseDot{
+    width: 10px; height: 10px; border-radius: 999px;
+    background: rgba(34,197,94,.95);
+    box-shadow: 0 0 0 0 rgba(34,197,94,.35);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow: 0 0 0 0 rgba(34,197,94,.35); }
+    70%{ box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+    100%{ box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+
+  .hTitle{ margin: 12px 0 6px; font-size: clamp(22px, 4.4vw, 36px); font-weight: 1100; }
   .nameGlow{
     background: linear-gradient(90deg, rgba(34,197,94,1), rgba(59,130,246,1), rgba(236,72,153,1));
     -webkit-background-clip:text; background-clip:text; color: transparent;
@@ -397,38 +484,81 @@ const css = `
 
   .miniRow{
     display:grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-top: 10px;
+    margin-top: 12px;
   }
   .mini{
-    background: rgba(255,255,255,.72);
+    background: rgba(255,255,255,.76);
     border: 1px solid rgba(11,18,32,.08);
     border-radius: 18px;
     padding: 12px;
+    min-width: 0;
   }
-  .miniLabel{ font-size: 12px; font-weight: 950; color: rgba(11,18,32,.62); }
-  .miniVal{ margin-top: 6px; font-size: 14px; font-weight: 1000; }
+  .miniLabel{ font-size: 12px; font-weight: 1000; color: rgba(11,18,32,.62); }
+  .miniVal{ margin-top: 6px; font-size: 14px; font-weight: 1100; }
+  .miniVal.ok{ color: rgba(16,185,129,.95); }
+
+  .heroGlow{
+    position:absolute; inset:-40%;
+    background: radial-gradient(circle, rgba(59,130,246,.18), transparent 55%);
+    transform: rotate(12deg);
+    pointer-events:none;
+  }
 
   .tabArea{ margin-top: 14px; }
   .tabCard{
+    width: 100%;
     background: rgba(255,255,255,.72);
     border: 1px solid rgba(255,255,255,.62);
-    border-radius: 24px;
-    padding: 16px;
+    border-radius: 26px;
+    padding: 14px;
     box-shadow: var(--shadow);
-    backdrop-filter: blur(14px);
-    min-height: 180px;
+    backdrop-filter: blur(16px);
+    overflow:hidden;
+  }
+
+  .tabHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 10px;
+    padding: 2px 2px 12px;
+    border-bottom: 1px solid rgba(11,18,32,.08);
+  }
+  .tabTitle{
+    font-weight: 1100;
+    font-size: 16px;
+  }
+  .tabPills{ display:flex; gap: 8px; flex-wrap:wrap; }
+  .pill{
+    font-size: 12px;
+    font-weight: 1100;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(124,58,237,.12);
+    border: 1px solid rgba(124,58,237,.18);
+    color: rgba(76,29,149,.95);
+  }
+  .pill.soft{
+    background: rgba(6,182,212,.12);
+    border-color: rgba(6,182,212,.18);
+    color: rgba(11,18,32,.86);
+  }
+
+  .tabBody{
+    padding-top: 14px;
   }
 
   .foot{
     margin-top: 14px;
+    width: 100%;
     display:flex;
     align-items:flex-start;
     justify-content:space-between;
     gap:12px;
     padding: 12px 14px;
-    border-radius: 18px;
+    border-radius: 20px;
     background: rgba(255,255,255,.58);
     border: 1px solid rgba(255,255,255,.60);
     backdrop-filter: blur(14px);
@@ -436,22 +566,28 @@ const css = `
   .footLeft{ display:flex; align-items:center; gap:10px; }
   .footTag{
     font-size: 12px;
-    font-weight: 1000;
+    font-weight: 1100;
     padding: 6px 10px;
     border-radius: 999px;
     background: rgba(34,197,94,.14);
     border: 1px solid rgba(34,197,94,.25);
     white-space: nowrap;
   }
-  .footName{ font-weight: 1000; white-space: nowrap; }
+  .footName{ font-weight: 1100; white-space: nowrap; }
+  .footSmall{ font-size: 12px; font-weight: 900; color: rgba(11,18,32,.62); }
 
-  .safeBottom{
-    height: calc(env(safe-area-inset-bottom, 0px) + 10px);
-    width: 100%;
-  }
-
+  /* ✅ Mobile perfect fit */
   @media (max-width: 980px){
     .miniRow{ grid-template-columns: 1fr; }
     .foot{ flex-direction:column; align-items:flex-start; }
+  }
+
+  /* ✅ True edge-to-edge on very small phones */
+  @media (max-width: 420px){
+    .nav{ padding: 10px 10px; }
+    .main{ padding: 10px 10px 14px; }
+    .heroCard{ padding: 14px; border-radius: 22px; }
+    .tabCard{ padding: 12px; border-radius: 22px; }
+    .drawer{ width: 92vw; padding: 12px; }
   }
 `;

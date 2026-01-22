@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import Measure from "./Measure";
 import Calculator from "./Calculator";
 import NotesN from "../Notes/NotesN";
-import Checklist from "./Checklist";
+import Checklist from "../Checklist/Checklist";
 
 export default function Importantwork() {
   const tabs = useMemo(
