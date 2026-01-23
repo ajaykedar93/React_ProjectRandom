@@ -20,9 +20,7 @@ export default function NotesN() {
     setAnimKey((k) => k + 1);
   };
 
-  // ✅ Only content scroll (tabs/header stay fixed on top)
   useEffect(() => {
-    // when tab changes, scroll content to top
     const el = document.getElementById("notesn-scroll");
     if (el) el.scrollTo({ top: 0, behavior: "smooth" });
   }, [activeTab]);
@@ -31,22 +29,17 @@ export default function NotesN() {
     <>
       <div className="notesn-page">
         <div className="notesn-card">
-          {/* ✅ STICKY HEADER + TABS (no scroll) */}
           <div className="notesn-sticky">
-            {/* HEADER */}
             <div className="notesn-header">
               <div className="notesn-badgeRow">
                 <div className="notesn-badge">NOTES DASHBOARD</div>
-                <div className="notesn-badgeMini">
-                  Bright • Clean • Professional
-                </div>
+                <div className="notesn-badgeMini">Bright • Clean • Professional</div>
               </div>
 
               <h1 className="notesn-title">Notes Dashboard</h1>
               <p className="notesn-subtitle">{subtitle}</p>
             </div>
 
-            {/* TABS */}
             <div className="notesn-tabsWrap">
               <div className="notesn-tabs" role="tablist" aria-label="Notes Tabs">
                 <button
@@ -80,13 +73,8 @@ export default function NotesN() {
             </div>
           </div>
 
-          {/* ✅ ONLY THIS AREA SCROLLS */}
           <div id="notesn-scroll" className="notesn-scroll" role="tabpanel">
-            <div
-              key={animKey}
-              className={`notesn-pane ${isAdd ? "inLeft" : "inRight"}`}
-            >
-              {/* ✅ children keep their own popups centered (not full page) */}
+            <div key={animKey} className={`notesn-pane ${isAdd ? "inLeft" : "inRight"}`}>
               {isAdd ? <AddNote /> : <GetNote />}
             </div>
           </div>
@@ -97,13 +85,29 @@ export default function NotesN() {
     </>
   );
 }
-
 const css = `
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; margin:0; }
-  body{
+  /* ✅ SCOPED: only inside Notes page */
+  .notesn-page, .notesn-page * { box-sizing: border-box; }
+
+  /* ✅ Put variables HERE (NOT :root) */
+  .notesn-page{
+    --text:#0f172a;
+    --muted: rgba(15,23,42,.70);
+    --line: rgba(15,23,42,.10);
+    --shadow: 0 18px 55px rgba(15,23,42,.14);
+    --radius: 22px;
+    --pad: clamp(12px, 3.2vw, 18px);
+
+    min-height:100dvh;
+    width:100%;
+    display:flex;
+    align-items:stretch;
+    justify-content:center;
+    padding: 0;
+
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    color:#0f172a;
+    color: var(--text);
+
     background:
       radial-gradient(1000px 700px at 10% 0%, rgba(37,99,235,.18), transparent 55%),
       radial-gradient(900px 650px at 90% 12%, rgba(236,72,153,.16), transparent 55%),
@@ -111,35 +115,9 @@ const css = `
       linear-gradient(180deg, #ffffff, #f3f7ff);
   }
 
-  :root{
-    --text:#0f172a;
-    --muted: rgba(15,23,42,.70);
-    --line: rgba(15,23,42,.10);
-    --shadow: 0 18px 55px rgba(15,23,42,.14);
-    --radius: 22px;
-
-    --addA:#2563eb;
-    --addB:#ec4899;
-
-    --getA:#10b981;
-    --getB:#06b6d4;
-
-    --pad: clamp(12px, 3.2vw, 18px);
-  }
-
-  /* ✅ full width on mobile */
-  .notesn-page{
-    min-height:100vh;
-    width:100%;
-    display:flex;
-    align-items:stretch;
-    justify-content:center;
-    padding: 0;
-  }
-
   .notesn-card{
     width:100%;
-    min-height:100vh;
+    min-height:100dvh;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -153,11 +131,10 @@ const css = `
     flex-direction:column;
   }
 
-  /* ✅ premium only on desktop */
   @media (min-width: 720px){
     .notesn-page{ padding: 26px; }
     .notesn-card{
-      min-height: calc(100vh - 52px);
+      min-height: calc(100dvh - 52px);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -165,7 +142,6 @@ const css = `
     }
   }
 
-  /* ✅ sticky area (header + tabs do NOT scroll) */
   .notesn-sticky{
     position: sticky;
     top: 0;
@@ -175,22 +151,15 @@ const css = `
     border-bottom: 1px solid var(--line);
   }
 
-  /* Header */
-  .notesn-header{
-    padding: 14px var(--pad) 10px;
-  }
+  .notesn-header{ padding: 14px var(--pad) 10px; }
 
   .notesn-badgeRow{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap: 10px;
-    flex-wrap:wrap;
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 10px; flex-wrap:wrap;
   }
 
   .notesn-badge{
-    display:inline-flex;
-    align-items:center;
+    display:inline-flex; align-items:center;
     padding: 6px 10px;
     font-size: 11px;
     letter-spacing: .12em;
@@ -202,8 +171,7 @@ const css = `
   }
 
   .notesn-badgeMini{
-    font-size: 11px;
-    font-weight: 900;
+    font-size: 11px; font-weight: 900;
     color: rgba(15,23,42,.75);
     background: rgba(255,255,255,.78);
     border: 1px solid rgba(15,23,42,.10);
@@ -213,7 +181,7 @@ const css = `
 
   .notesn-title{
     margin: 10px 0 6px;
-    font-size: 18px;      /* ✅ small on mobile */
+    font-size: 18px;
     line-height: 1.15;
     font-weight: 1200;
     letter-spacing: -0.02em;
@@ -228,10 +196,7 @@ const css = `
     color: var(--muted);
   }
 
-  /* Tabs wrapper */
-  .notesn-tabsWrap{
-    padding: 10px var(--pad) 12px;
-  }
+  .notesn-tabsWrap{ padding: 10px var(--pad) 12px; }
 
   .notesn-tabs{
     display:grid;
@@ -243,13 +208,12 @@ const css = `
     padding: 8px;
   }
 
-  /* ✅ tabs compact on mobile */
   .notesn-tab{
     position:relative;
     border: 1px solid rgba(15,23,42,.10);
     background: rgba(255,255,255,.92);
     color: rgba(15,23,42,.92);
-    padding: 10px 10px;         /* ✅ smaller */
+    padding: 10px 10px;
     border-radius: 12px;
     cursor:pointer;
     outline:none;
@@ -262,7 +226,7 @@ const css = `
     overflow:hidden;
     user-select:none;
     -webkit-tap-highlight-color: transparent;
-    min-height: 42px;           /* ✅ not too big */
+    min-height: 42px;
   }
 
   .notesn-tabIcon{ font-size: 15px; }
@@ -323,23 +287,16 @@ const css = `
     border-radius: 14px;
   }
 
-  /* ✅ ONLY CONTENT SCROLLS */
   .notesn-scroll{
     flex: 1 1 auto;
-    min-height: 0;                 /* ✅ important for flex scroll */
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: 0;                    /* ✅ keep edge-to-edge */
+    padding: 0;
   }
 
-  .notesn-pane{
-    width:100%;
-    margin:0;
-    padding:0;
-    animation: .32s ease both;
-  }
-
+  .notesn-pane{ width:100%; margin:0; padding:0; animation: .32s ease both; }
   .notesn-pane.inLeft{ animation-name: paneInLeft; }
   .notesn-pane.inRight{ animation-name: paneInRight; }
 
@@ -352,7 +309,6 @@ const css = `
     100%{ opacity: 1; transform: translateX(0) translateY(0); }
   }
 
-  /* ✅ desktop: slightly bigger (but not too much) */
   @media (min-width: 720px){
     .notesn-title{ font-size: 22px; }
     .notesn-subtitle{ font-size: 13px; }

@@ -90,7 +90,8 @@ export default function GetNote() {
 
   // ✅ Image viewer
   const [imgViewer, setImgViewer] = useState({ open: false, src: "", alt: "" });
-  const openImage = (src, alt = "note") => setImgViewer({ open: true, src, alt });
+  const openImage = (src, alt = "note") =>
+    setImgViewer({ open: true, src, alt });
   const closeImage = () => setImgViewer({ open: false, src: "", alt: "" });
 
   // ✅ Reset edit modal scroll TOP
@@ -104,7 +105,8 @@ export default function GetNote() {
 
   // ✅ Lock background scroll when any modal open
   useEffect(() => {
-    const anyOpen = imgViewer.open || editModal.open || centerModal.open || authLoading;
+    const anyOpen =
+      imgViewer.open || editModal.open || centerModal.open || authLoading;
     if (!anyOpen) return;
 
     const prevBody = document.body.style.overflow;
@@ -124,10 +126,13 @@ export default function GetNote() {
 
     setNotesLoading(true);
     try {
-      const res = await fetch(`${API_BASE}?user_id=${encodeURIComponent(userId)}`, {
-        method: "GET",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetch(
+        `${API_BASE}?user_id=${encodeURIComponent(userId)}`,
+        {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "Failed to load notes.");
@@ -162,10 +167,13 @@ export default function GetNote() {
 
     try {
       setNotesLoading(true);
-      const res = await fetch(`${API_BASE}/${noteId}?user_id=${encodeURIComponent(userId)}`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetch(
+        `${API_BASE}/${noteId}?user_id=${encodeURIComponent(userId)}`,
+        {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "Failed to delete note.");
@@ -242,7 +250,66 @@ export default function GetNote() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, userId]);
 
-  const orderedNotes = useMemo(() => (Array.isArray(notes) ? notes : []), [notes]);
+  const orderedNotes = useMemo(
+    () => (Array.isArray(notes) ? notes : []),
+    [notes]
+  );
+
+  // ✅ Timestamp formatter: dd/mm/yyyy + hh:mm AM/PM
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  const normalizeDate = (s) => {
+    const v = String(s ?? "").trim();
+    if (!v) return "";
+
+    // yyyy-mm-dd -> dd/mm/yyyy
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      const [yy, mm, dd] = v.split("-");
+      return `${dd}/${mm}/${yy}`;
+    }
+
+    // dd/mm/yyyy already
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v;
+
+    return v;
+  };
+
+  const normalizeTime = (s) => {
+    const v = String(s ?? "").trim();
+    if (!v) return "";
+
+    // already "hh:mm AM/PM"
+    if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(v)) {
+      const [time, ap] = v.split(/\s+/);
+      const [hh, mm] = time.split(":");
+      return `${pad2(parseInt(hh, 10))}:${mm} ${ap.toUpperCase()}`;
+    }
+
+    // if "HH:mm" (24h) -> convert to 12h AM/PM
+    if (/^\d{1,2}:\d{2}$/.test(v)) {
+      let [H, M] = v.split(":").map((x) => parseInt(x, 10));
+      const ap = H >= 12 ? "PM" : "AM";
+      H = H % 12;
+      if (H === 0) H = 12;
+      return `${pad2(H)}:${pad2(M)} ${ap}`;
+    }
+
+    return v;
+  };
+
+  const getStamp = (note) => {
+    const dRaw = note?.note_date || "";
+    const tRaw = note?.note_time || "";
+
+    const d = normalizeDate(dRaw);
+    const t = normalizeTime(tRaw);
+
+    if (d && t) return `${d} • ${t}`;
+    if (d) return d;
+    if (t) return t;
+
+    return "01/01/2026 • 12:00 AM";
+  };
 
   return (
     <div className="getnotePage">
@@ -344,7 +411,10 @@ export default function GetNote() {
                     className="input"
                     value={editModal.note_title}
                     onChange={(e) =>
-                      setEditModal((p) => ({ ...p, note_title: e.target.value }))
+                      setEditModal((p) => ({
+                        ...p,
+                        note_title: e.target.value,
+                      }))
                     }
                     placeholder="Eg. Meeting points"
                   />
@@ -384,7 +454,10 @@ export default function GetNote() {
                       className="input"
                       value={editModal.note_date}
                       onChange={(e) =>
-                        setEditModal((p) => ({ ...p, note_date: e.target.value }))
+                        setEditModal((p) => ({
+                          ...p,
+                          note_date: e.target.value,
+                        }))
                       }
                       placeholder="dd/mm/yyyy"
                     />
@@ -396,7 +469,10 @@ export default function GetNote() {
                       className="input"
                       value={editModal.note_time}
                       onChange={(e) =>
-                        setEditModal((p) => ({ ...p, note_time: e.target.value }))
+                        setEditModal((p) => ({
+                          ...p,
+                          note_time: e.target.value,
+                        }))
                       }
                       placeholder="hh:mm AM/PM"
                     />
@@ -410,7 +486,9 @@ export default function GetNote() {
                       <button
                         type="button"
                         className="btn mini primary"
-                        onClick={() => openImage(getImageUrl(editModal.noteId), "note")}
+                        onClick={() =>
+                          openImage(getImageUrl(editModal.noteId), "note")
+                        }
                       >
                         View
                       </button>
@@ -495,6 +573,7 @@ export default function GetNote() {
               const title = n.note_title ? n.note_title : "Untitled";
               const info = n.note_info ? n.note_info : "";
               const desc = n.note_description ? n.note_description : "";
+              const stamp = getStamp(n);
 
               return (
                 <div key={n.note_id} className="noteCard">
@@ -519,6 +598,14 @@ export default function GetNote() {
                         Delete
                       </button>
                     </div>
+                  </div>
+
+                  {/* ✅ Timestamp bar ABOVE title */}
+                  <div className="stampBar">
+                    <span className="stampIcon">🕒</span>
+                    <span className="stampText">
+                      {stamp || "01/01/2026 • 12:00 AM"}
+                    </span>
                   </div>
 
                   <div className="titleBadge">{title}</div>
@@ -565,7 +652,7 @@ export default function GetNote() {
   );
 }
 
-/* ✅ FULL CSS (modal never cuts) */
+/* ✅ FULL CSS */
 const css = `
   *{ box-sizing:border-box; }
   html, body { margin:0; padding:0; width:100%; height:100%; overflow-x:hidden; }
@@ -642,6 +729,27 @@ const css = `
   }
 
   .headRight{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:flex-end; }
+
+  /* ✅ Timestamp bar */
+  .stampBar{
+    margin-top: 2px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(245,158,11,.18);
+    border: 1px solid rgba(245,158,11,.28);
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .stampIcon{ font-size: 13px; line-height: 1; }
+  .stampText{
+    color: #000;        /* ✅ black */
+    font-weight: 800;   /* ✅ bold */
+    font-size: 12px;
+    letter-spacing: .2px;
+    word-break: break-word;
+  }
 
   .titleBadge{
     margin-top: 4px;
@@ -745,7 +853,7 @@ const css = `
   .emptyIcon{ font-size: 26px; }
   .emptyTitle{ font-weight: 1300; color: var(--text); }
 
-  /* ✅ PORTAL MODALS: ALWAYS CENTER, NEVER CUT */
+  /* ✅ PORTAL MODALS */
   .modalOverlay,
   .editOverlay,
   .imgOverlay,

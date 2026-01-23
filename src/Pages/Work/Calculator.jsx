@@ -280,7 +280,7 @@ export default function Calculator() {
           </button>
         </div>
 
-        {/* Screen */}
+        {/* ✅ Only Screen at top */}
         <div className="screen">
           <div className="exprLine">{expr || "0"}</div>
           <div className={`resLine ${liveResult === "Error" ? "err" : ""}`}>
@@ -288,70 +288,72 @@ export default function Calculator() {
           </div>
         </div>
 
-        {/* History */}
-        <div className="history">
-          <div className="hTop">
-            <div className="hTitle">History (Last 5)</div>
-            <button
-              type="button"
-              className={`hClear ${history.length ? "" : "disabled"}`}
-              onClick={clearHistory}
-              disabled={!history.length}
-              title="Clear history"
-              aria-label="Clear history"
-            >
-              ✕
-            </button>
+        {/* ✅ Buttons first */}
+        <div className="padWrap">
+          <div className="pad">
+            {keys.map((k, idx) => {
+              const isPressed = pressedKey === k.t;
+              return (
+                <button
+                  key={`${k.t}-${idx}`}
+                  className={`btn ${k.type} ${isPressed ? "pressed" : ""}`}
+                  onClick={() => runKey(k)}
+                  onPointerDown={() => setPressedKey(k.t)}
+                  onPointerUp={() => setPressedKey(null)}
+                  onPointerCancel={() => setPressedKey(null)}
+                  onPointerLeave={() => setPressedKey(null)}
+                  type="button"
+                >
+                  <span className="btnText">{k.t}</span>
+                  <span className="ripple" />
+                </button>
+              );
+            })}
           </div>
 
-          {history.length === 0 ? (
-            <div className="hEmpty">No calculations yet.</div>
-          ) : (
-            <div className="hList">
-              {history
-                .slice()
-                .reverse()
-                .map((h, i) => {
-                  const realIdx = history.length - 1 - i;
-                  const activeRow = hIndex === realIdx;
-                  return (
-                    <button
-                      key={`${h.expr}-${realIdx}`}
-                      type="button"
-                      className={`hRow ${activeRow ? "active" : ""}`}
-                      onClick={() => jumpToHistory(realIdx)}
-                      title="Open this calculation"
-                    >
-                      <span className="hExpr">{h.expr}</span>
-                      <span className="hEq">=</span>
-                      <span className="hRes">{h.result}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-
-        {/* Keypad */}
-        <div className="pad">
-          {keys.map((k, idx) => {
-            const isPressed = pressedKey === k.t;
-            return (
+          {/* ✅ History below buttons */}
+          <div className="history">
+            <div className="hTop">
+              <div className="hTitle">History (Last 5)</div>
               <button
-                key={`${k.t}-${idx}`}
-                className={`btn ${k.type} ${isPressed ? "pressed" : ""}`}
-                onClick={() => runKey(k)}
-                onPointerDown={() => setPressedKey(k.t)}
-                onPointerUp={() => setPressedKey(null)}
-                onPointerCancel={() => setPressedKey(null)}
-                onPointerLeave={() => setPressedKey(null)}
                 type="button"
+                className={`hClear ${history.length ? "" : "disabled"}`}
+                onClick={clearHistory}
+                disabled={!history.length}
+                title="Clear history"
+                aria-label="Clear history"
               >
-                <span className="btnText">{k.t}</span>
-                <span className="ripple" />
+                ✕
               </button>
-            );
-          })}
+            </div>
+
+            {history.length === 0 ? (
+              <div className="hEmpty">No calculations yet.</div>
+            ) : (
+              <div className="hList">
+                {history
+                  .slice()
+                  .reverse()
+                  .map((h, i) => {
+                    const realIdx = history.length - 1 - i;
+                    const activeRow = hIndex === realIdx;
+                    return (
+                      <button
+                        key={`${h.expr}-${realIdx}`}
+                        type="button"
+                        className={`hRow ${activeRow ? "active" : ""}`}
+                        onClick={() => jumpToHistory(realIdx)}
+                        title="Open this calculation"
+                      >
+                        <span className="hExpr">{h.expr}</span>
+                        <span className="hEq">=</span>
+                        <span className="hRes">{h.result}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -360,37 +362,27 @@ export default function Calculator() {
 
 const css = `
   *{ box-sizing:border-box; }
-  html, body{ height:100%; margin:0; padding:0; }
-  
+  html, body{ margin:0; padding:0; }
+
   :root{
     --bg:#f4f7fb;
-    --card:#ffffff;
     --border:#e5eaf2;
     --text:#0f172a;
     --muted:#64748b;
-
     --shadow: 0 16px 44px rgba(17,24,39,.10);
     --shadow2: 0 12px 28px rgba(17,24,39,.10);
-
-    /* operator colors */
-    --red1:#ef4444;  --red2:#fb7185;
-    --orange1:#f59e0b; --orange2:#fb923c;
-    --blue1:#2563eb; --blue2:#60a5fa;
-    --green1:#16a34a; --green2:#22c55e;
   }
 
-  /* ✅ IMPORTANT: NOT 100vh (so tabs won't break) */
+  /* ✅ Full visible page on mobile (no cut) */
   .calcPage{
     width:100%;
-    min-height:100%;
+    min-height: 100dvh;
     background: var(--bg);
-    padding: 0;
   }
 
-  /* Edge-to-edge on mobile */
   .calcWrap{
     width:100%;
-    min-height:100%;
+    min-height: 100dvh;
     padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
     display:flex;
     flex-direction:column;
@@ -419,12 +411,8 @@ const css = `
     color: var(--text);
     font-weight: 950;
     cursor:pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    transition: transform .12s ease, filter .12s ease;
     box-shadow: 0 10px 18px rgba(17,24,39,.08);
   }
-  .navBtn:active{ transform: scale(.98); }
   .navBtn.disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
 
   .hdrMid{ text-align:center; flex: 1; }
@@ -469,11 +457,76 @@ const css = `
     text-align:right;
     word-break: break-word;
     line-height: 1.06;
-    letter-spacing: .2px;
   }
   .resLine.err{ color: #ef4444; }
 
-  /* History */
+  /* ✅ Buttons + History container */
+  .padWrap{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+    margin-top: auto; /* pushes keypad+history down if space available */
+  }
+
+  .pad{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .btn{
+    position:relative;
+    height: clamp(62px, 10.5vh, 80px); /* ✅ responsive height (no cut) */
+    border-radius: 22px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: rgba(15,23,42,.95);
+    font-weight: 1100;
+    font-size: 26px;
+    cursor:pointer;
+    box-shadow: var(--shadow2);
+    overflow:hidden;
+    user-select:none;
+  }
+  .btn.wide{ grid-column: span 2; }
+
+  .btnText{ position:relative; z-index:2; }
+
+  /* Ripple */
+  .btn .ripple{
+    position:absolute;
+    inset:0;
+    background: radial-gradient(circle at center, rgba(37,99,235,.14), transparent 55%);
+    opacity:0;
+    transform: scale(.85);
+    transition: opacity .18s ease, transform .18s ease;
+    z-index:1;
+    pointer-events:none;
+  }
+  .btn:active .ripple{
+    opacity:1;
+    transform: scale(1);
+  }
+
+  .btn.func{ background: #f8fafc; }
+  .btn.op.red{
+    background: linear-gradient(135deg, rgba(239,68,68,.20), rgba(251,113,133,.16));
+    border: 1px solid rgba(239,68,68,.22);
+  }
+  .btn.op.orange{
+    background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(251,146,60,.16));
+    border: 1px solid rgba(245,158,11,.24);
+  }
+  .btn.op.blue{
+    background: linear-gradient(135deg, rgba(37,99,235,.20), rgba(96,165,250,.16));
+    border: 1px solid rgba(37,99,235,.22);
+  }
+  .btn.eq.green{
+    background: linear-gradient(135deg, rgba(34,197,94,.22), rgba(22,163,74,.16));
+    border: 1px solid rgba(34,197,94,.22);
+  }
+
+  /* ✅ History BELOW buttons */
   .history{
     border-radius: 20px;
     padding: 10px;
@@ -502,13 +555,8 @@ const css = `
     color: rgba(15,23,42,.9);
     font-weight: 1100;
     cursor:pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    transition: transform .12s ease, opacity .12s ease;
-    box-shadow: 0 8px 14px rgba(17,24,39,.08);
   }
-  .hClear:active{ transform: scale(.98); }
-  .hClear.disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+  .hClear.disabled{ opacity:.45; cursor:not-allowed; }
 
   .hEmpty{
     font-size: 12px;
@@ -524,6 +572,7 @@ const css = `
     max-height: 150px;
     overflow:auto;
     padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .hRow{
@@ -538,11 +587,7 @@ const css = `
     gap: 8px;
     text-align:left;
     cursor:pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    transition: transform .12s ease, background .12s ease, outline .12s ease;
   }
-  .hRow:active{ transform: scale(.99); }
   .hRow.active{
     outline: 2px solid rgba(37,99,235,.18);
     background: #eef2ff;
@@ -569,88 +614,6 @@ const css = `
     text-align:right;
   }
 
-  /* Keypad: big + sticky bottom */
-  .pad{
-    margin-top: auto;
-    position: sticky;
-    bottom: 0;
-    padding: 12px 0 0;
-    display:grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-  }
-
-  .btn{
-    position:relative;
-    height: 78px;
-    border-radius: 22px;
-    border: 1px solid var(--border);
-    background: #fff;
-    color: rgba(15,23,42,.95);
-    font-weight: 1100;
-    font-size: 26px;
-    cursor:pointer;
-    box-shadow: var(--shadow2);
-    overflow:hidden;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    user-select:none;
-    transition: transform .10s ease, filter .12s ease;
-  }
-
-  .btn:hover{ filter: brightness(1.02); }
-  .btn:active{ transform: translateY(1px) scale(.985); }
-  .btn.pressed{ transform: translateY(1px) scale(.985); }
-
-  .btnText{ position:relative; z-index:2; }
-
-  /* Ripple */
-  .btn .ripple{
-    position:absolute;
-    inset:0;
-    background: radial-gradient(circle at center, rgba(37,99,235,.14), transparent 55%);
-    opacity:0;
-    transform: scale(.85);
-    transition: opacity .18s ease, transform .18s ease;
-    z-index:1;
-    pointer-events:none;
-  }
-  .btn:active .ripple,
-  .btn.pressed .ripple{
-    opacity:1;
-    transform: scale(1);
-  }
-
-  .btn.func{
-    background: #f8fafc;
-  }
-
-  .btn.op.red{
-    background: linear-gradient(135deg, rgba(239,68,68,.20), rgba(251,113,133,.16));
-    border: 1px solid rgba(239,68,68,.22);
-    color: rgba(15,23,42,.95);
-  }
-
-  .btn.op.orange{
-    background: linear-gradient(135deg, rgba(245,158,11,.22), rgba(251,146,60,.16));
-    border: 1px solid rgba(245,158,11,.24);
-    color: rgba(15,23,42,.95);
-  }
-
-  .btn.op.blue{
-    background: linear-gradient(135deg, rgba(37,99,235,.20), rgba(96,165,250,.16));
-    border: 1px solid rgba(37,99,235,.22);
-    color: rgba(15,23,42,.95);
-  }
-
-  .btn.eq.green{
-    background: linear-gradient(135deg, rgba(34,197,94,.22), rgba(22,163,74,.16));
-    border: 1px solid rgba(34,197,94,.22);
-    color: rgba(15,23,42,.95);
-  }
-
-  .btn.wide{ grid-column: span 2; }
-
   /* Desktop */
   @media (min-width: 900px){
     .calcWrap{
@@ -661,7 +624,5 @@ const css = `
       border-radius: 26px;
       box-shadow: 0 26px 80px rgba(17,24,39,.12);
     }
-    .btn{ height: 82px; font-size: 28px; }
-    .resLine{ font-size: 44px; }
   }
 `;
