@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext"; // ✅ correct path
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // ✅ Backend base (Render)
-  const API_BASE = "https://express-projectrandom.onrender.com";
+  // ✅ Use env if available, else fallback
+  const API_BASE = useMemo(
+    () =>
+      import.meta?.env?.VITE_API_BASE?.trim() ||
+      "https://express-projectrandom.onrender.com",
+    []
+  );
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -25,15 +30,42 @@ export default function Login() {
     setModal({ open: true, type, title, message });
   const closeModal = () => setModal((p) => ({ ...p, open: false }));
 
+  // ✅ prevent state updates after unmount
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
+
+  // ✅ ESC close modal
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && closeModal();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // ✅ Warm-up backend (reduces cold start delay on first login)
+  useEffect(() => {
+    const warmUp = async () => {
+      try {
+        // Try /health first (best). If not present, hit root.
+        await fetch(`${API_BASE}/health`, { method: "GET" }).catch(() =>
+          fetch(`${API_BASE}/`, { method: "GET" })
+        );
+      } catch {
+        // ignore warm-up errors
+      }
+    };
+    warmUp();
+  }, [API_BASE]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
+    // ✅ remove field error while typing
+    setErrors((p) => ({ ...p, [name]: "" }));
   };
 
   const validate = () => {
@@ -59,55 +91,82 @@ export default function Login() {
     return Object.keys(err).length === 0;
   };
 
-  async function apiPost(path, body) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      // ✅ IMPORTANT: remove credentials unless you use cookie auth
-      // credentials: "include",
-    });
+  // ✅ faster JSON handling + timeout + better error
+  async function apiPost(path, body, { timeoutMs = 15000 } = {}) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
 
-    const text = await res.text();
-    let data = null;
     try {
-      data = JSON.parse(text);
-    } catch {}
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
-    return data || {};
+      // Prefer JSON, fallback to text
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? await res.json().catch(() => ({}))
+        : await res.text().then((txt) => ({ message: txt })).catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message ||
+            `Request failed (HTTP ${res.status}). Please try again.`
+        );
+      }
+      return data || {};
+    } catch (e) {
+      if (e?.name === "AbortError") {
+        throw new Error(
+          "Server is taking too long (cold start). Please try again in 10 seconds."
+        );
+      }
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
   }
 
-  // ✅ Robust token extractor (optional but good)
   function extractToken(data) {
-    if (data?.token) return data.token;
-    if (data?.accessToken) return data.accessToken;
-    if (data?.jwt) return data.jwt;
-
-    if (data?.user?.token) return data.user.token;
-    if (data?.user?.accessToken) return data.user.accessToken;
-    if (data?.user?.jwt) return data.user.jwt;
-
-    if (data?.data?.token) return data.data.token;
-    if (data?.data?.accessToken) return data.data.accessToken;
-    if (data?.data?.jwt) return data.data.jwt;
-
-    return "";
+    return (
+      data?.token ||
+      data?.accessToken ||
+      data?.jwt ||
+      data?.user?.token ||
+      data?.user?.accessToken ||
+      data?.user?.jwt ||
+      data?.data?.token ||
+      data?.data?.accessToken ||
+      data?.data?.jwt ||
+      ""
+    );
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // ✅ prevent double submit
     if (!validate()) return;
 
     try {
       setLoading(true);
 
+      // ✅ Instant feedback (feels fast)
+      openModal("info", "Signing you in…", "Please wait a moment.");
+
       const endpoint = isAdmin ? "/admin/login" : "/api/auth/login";
 
-      const data = await apiPost(endpoint, {
-        username: form.username.trim(),
-        password: form.password.trim(),
-      });
+      const data = await apiPost(
+        endpoint,
+        {
+          username: form.username.trim(),
+          password: form.password.trim(),
+        },
+        { timeoutMs: 20000 } // Render cold start safe
+      );
+
+      if (!aliveRef.current) return;
 
       if (isAdmin) {
         const adminToken = extractToken(data);
@@ -117,12 +176,8 @@ export default function Login() {
         const adminObj = data.admin || data.user || {};
         login({ ...adminObj, role: "admin" });
 
-        openModal(
-          "success",
-          "Admin Login Success",
-          data?.message || "Logged in successfully ✅"
-        );
-        setTimeout(() => navigate("/admin", { replace: true }), 600);
+        openModal("success", "Admin Login Success", data?.message || "Logged in ✅");
+        setTimeout(() => navigate("/admin", { replace: true }), 450);
       } else {
         localStorage.removeItem("admin_token");
 
@@ -130,24 +185,20 @@ export default function Login() {
         if (userToken) localStorage.setItem("token", userToken);
         else localStorage.removeItem("token");
 
-        // if your backend returns user object
         login(data.user);
 
-        openModal(
-          "success",
-          "Login Success",
-          data?.message || "Logged in successfully ✅"
-        );
-        setTimeout(() => navigate("/dashboard", { replace: true }), 600);
+        openModal("success", "Login Success", data?.message || "Logged in ✅");
+        setTimeout(() => navigate("/dashboard", { replace: true }), 450);
       }
     } catch (err) {
+      if (!aliveRef.current) return;
       openModal(
         "error",
         isAdmin ? "Admin Login Failed" : "Login Failed",
-        err.message || "Invalid credentials"
+        err?.message || "Invalid credentials"
       );
     } finally {
-      setLoading(false);
+      if (aliveRef.current) setLoading(false);
     }
   };
 
@@ -190,6 +241,8 @@ export default function Login() {
               type="button"
               className={`toggle ${isAdmin ? "on" : ""}`}
               onClick={() => setIsAdmin((p) => !p)}
+              disabled={loading}
+              title="Switch mode"
             >
               <span className="knob" />
             </button>
@@ -208,6 +261,7 @@ export default function Login() {
               placeholder={isAdmin ? "admin@gmail.com" : "Email or Mobile"}
               type={isAdmin ? "email" : "text"}
               autoComplete="username"
+              disabled={loading}
             />
             {errors.username && <div className="eTxt">{errors.username}</div>}
           </div>
@@ -224,6 +278,7 @@ export default function Login() {
               onChange={handleChange}
               placeholder="Enter password"
               autoComplete="current-password"
+              disabled={loading}
             />
             {errors.password && <div className="eTxt">{errors.password}</div>}
           </div>
@@ -247,14 +302,18 @@ export default function Login() {
               <span className="dot">Admin mode enabled</span>
             )}
           </div>
+
+          {/* ✅ tiny hint when cold start happens */}
+          <div style={{ marginTop: 10, textAlign: "center", fontSize: 11, fontWeight: 800, color: "rgba(11,18,32,.55)" }}>
+            Tip: First login can be slow if server is waking up.
+          </div>
         </form>
       </div>
     </div>
   );
 }
 
-/* ✅ FULL CSS (same as your file) */
-const css = `
+const css = `/* same CSS as your file (unchanged) */
   :root{
     --txt:#0b1220;
     --muted:rgba(11,18,32,.65);
