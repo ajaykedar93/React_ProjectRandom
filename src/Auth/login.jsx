@@ -19,6 +19,12 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // ✅ server warm status (small info)
+  const [serverStatus, setServerStatus] = useState({
+    state: "checking", // checking | ready | waking | down
+    ms: 0,
+  });
+
   const [modal, setModal] = useState({
     open: false,
     type: "info",
@@ -46,25 +52,65 @@ export default function Login() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // ✅ Warm-up backend (reduces cold start delay on first login)
+  // ✅ Preconnect (DNS + TLS warm)
+  useEffect(() => {
+    try {
+      const origin = new URL(API_BASE).origin;
+      const link = document.createElement("link");
+      link.rel = "preconnect";
+      link.href = origin;
+      document.head.appendChild(link);
+      return () => document.head.removeChild(link);
+    } catch {
+      // ignore
+    }
+  }, [API_BASE]);
+
+  // ✅ Warm-up backend (FIXED)
+  // Previous bug: fetch 404 does NOT go to catch.
   useEffect(() => {
     const warmUp = async () => {
+      const start = performance.now();
+      const setStateSafe = (state, ms = 0) => {
+        if (!aliveRef.current) return;
+        setServerStatus({ state, ms });
+      };
+
+      setStateSafe("checking", 0);
+
       try {
-        // Try /health first (best). If not present, hit root.
-        await fetch(`${API_BASE}/health`, { method: "GET" }).catch(() =>
-          fetch(`${API_BASE}/`, { method: "GET" })
-        );
+        // 1) try /health
+        const r1 = await fetch(`${API_BASE}/health`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        // if /health is missing (404) or not ok -> try root
+        if (!r1.ok) {
+          const r2 = await fetch(`${API_BASE}/`, {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          const ms = Math.round(performance.now() - start);
+          setStateSafe(r2.ok ? "ready" : "waking", ms);
+          return;
+        }
+
+        const ms = Math.round(performance.now() - start);
+        setStateSafe("ready", ms);
       } catch {
-        // ignore warm-up errors
+        const ms = Math.round(performance.now() - start);
+        setStateSafe("down", ms);
       }
     };
+
     warmUp();
   }, [API_BASE]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
-    // ✅ remove field error while typing
     setErrors((p) => ({ ...p, [name]: "" }));
   };
 
@@ -91,8 +137,29 @@ export default function Login() {
     return Object.keys(err).length === 0;
   };
 
-  // ✅ faster JSON handling + timeout + better error
-  async function apiPost(path, body, { timeoutMs = 15000 } = {}) {
+  // ✅ better error detection
+  function toNiceError(err, resStatus) {
+    const msg = err?.message || "";
+
+    // Timeout / cold start
+    if (msg.toLowerCase().includes("cold start") || err?.name === "AbortError") {
+      return "Server is waking up (Render cold start). Wait 5–10 seconds and try again.";
+    }
+
+    // Network / CORS usually appears as TypeError: Failed to fetch
+    if (msg.toLowerCase().includes("failed to fetch")) {
+      return "API unreachable (CORS / network). Check backend CORS and API URL.";
+    }
+
+    // 404 route mismatch
+    if (resStatus === 404) {
+      return "API route not found (404). Check endpoint path in backend.";
+    }
+
+    return msg || "Login failed. Please try again.";
+  }
+
+  async function apiPost(path, body, { timeoutMs = 35000 } = {}) {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -104,24 +171,28 @@ export default function Login() {
         signal: controller.signal,
       });
 
-      // Prefer JSON, fallback to text
       const contentType = res.headers.get("content-type") || "";
       const data = contentType.includes("application/json")
         ? await res.json().catch(() => ({}))
         : await res.text().then((txt) => ({ message: txt })).catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(
-          data?.message ||
-            `Request failed (HTTP ${res.status}). Please try again.`
+        const e = new Error(
+          data?.message || `Request failed (HTTP ${res.status}).`
         );
+        e.status = res.status;
+        throw e;
       }
+
       return data || {};
     } catch (e) {
+      // normalize abort
       if (e?.name === "AbortError") {
-        throw new Error(
-          "Server is taking too long (cold start). Please try again in 10 seconds."
+        const er = new Error(
+          "Server is taking too long (cold start). Please try again."
         );
+        er.name = "AbortError";
+        throw er;
       }
       throw e;
     } finally {
@@ -146,25 +217,19 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return; // ✅ prevent double submit
+    if (loading) return;
     if (!validate()) return;
 
     try {
       setLoading(true);
-
-      // ✅ Instant feedback (feels fast)
       openModal("info", "Signing you in…", "Please wait a moment.");
 
       const endpoint = isAdmin ? "/admin/login" : "/api/auth/login";
 
-      const data = await apiPost(
-        endpoint,
-        {
-          username: form.username.trim(),
-          password: form.password.trim(),
-        },
-        { timeoutMs: 20000 } // Render cold start safe
-      );
+      const data = await apiPost(endpoint, {
+        username: form.username.trim(),
+        password: form.password.trim(),
+      });
 
       if (!aliveRef.current) return;
 
@@ -195,12 +260,21 @@ export default function Login() {
       openModal(
         "error",
         isAdmin ? "Admin Login Failed" : "Login Failed",
-        err?.message || "Invalid credentials"
+        toNiceError(err, err?.status)
       );
     } finally {
       if (aliveRef.current) setLoading(false);
     }
   };
+
+  const serverText =
+    serverStatus.state === "ready"
+      ? `Server ready (${serverStatus.ms}ms)`
+      : serverStatus.state === "waking"
+      ? `Server waking up… (${serverStatus.ms}ms)`
+      : serverStatus.state === "down"
+      ? `Server not reachable`
+      : `Checking server…`;
 
   return (
     <div className="lp">
@@ -233,6 +307,12 @@ export default function Login() {
             <p className="sub">
               {isAdmin ? "Admin access • Secure Sign-in" : "Welcome back • Secure Sign-in"}
             </p>
+
+            {/* ✅ Small server status (professional) */}
+            <div className="srvLine">
+              <span className={`srvDot ${serverStatus.state}`} />
+              <span className="srvText">{serverText}</span>
+            </div>
           </div>
 
           <div className="modeRow">
@@ -303,9 +383,16 @@ export default function Login() {
             )}
           </div>
 
-          {/* ✅ tiny hint when cold start happens */}
-          <div style={{ marginTop: 10, textAlign: "center", fontSize: 11, fontWeight: 800, color: "rgba(11,18,32,.55)" }}>
-            Tip: First login can be slow if server is waking up.
+          <div
+            style={{
+              marginTop: 10,
+              textAlign: "center",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "rgba(11,18,32,.55)",
+            }}
+          >
+            Tip: First login can be slow if server is waking up (Render).
           </div>
         </form>
       </div>
@@ -380,6 +467,28 @@ const css = `/* same CSS as your file (unchanged) */
   .head{ text-align:center; margin-bottom:14px; }
   .title{ margin:0; font-weight:950; color:var(--txt); font-size: clamp(22px, 3.2vw, 30px); }
   .sub{ margin:8px 0 0; color:var(--muted); font-weight:700; font-size: clamp(12px, 1.8vw, 14px); }
+
+  /* ✅ small server status */
+  .srvLine{
+    margin-top: 10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-weight: 900;
+    font-size: 12px;
+    color: rgba(11,18,32,.70);
+  }
+  .srvDot{
+    width: 10px; height: 10px;
+    border-radius: 999px;
+    background: rgba(148,163,184,.9);
+    box-shadow: 0 0 0 0 rgba(148,163,184,.35);
+  }
+  .srvDot.ready{ background: rgba(34,197,94,.95); }
+  .srvDot.waking{ background: rgba(245,158,11,.95); }
+  .srvDot.down{ background: rgba(255,45,85,.95); }
+  .srvDot.checking{ background: rgba(148,163,184,.95); }
 
   .modeRow{
     margin: 14px auto 4px;

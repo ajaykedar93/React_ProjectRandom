@@ -69,29 +69,35 @@ export default function AdminDashboard() {
     <div className={`ad ${menuOpen ? "lock" : ""}`}>
       <style>{css}</style>
 
-      {/* ✅ Sticky Nav */}
-      <header className="nav">
-        <div className="navLeft" role="button" tabIndex={0} onClick={() => goTab(tabs[0])}>
-          <div className="brandMark" aria-hidden="true">
-            A
-          </div>
-          <div className="brandText">
-            <div className="brandTitle">Admin Panel</div>
-            <div className="brandSub">{activeKey}</div>
-          </div>
-        </div>
+      {/* ✅ Sticky Nav (safe top spacing + dark rose theme) */}
+      <header className="navWrap">
+        <div className="nav">
+          <div className="navLeft" role="button" tabIndex={0} onClick={() => goTab(tabs[0])}>
+            <div className="brandMark" aria-hidden="true">
+              A
+            </div>
 
-        <div className="navRight">
-          <button
-            className={`burger ${menuOpen ? "open" : ""}`}
-            type="button"
-            aria-label="Open menu"
-            onClick={() => setMenuOpen(true)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+            <div className="brandText">
+              <div className="brandTitle">
+                Admin Panel <span className="titleDot">•</span>
+                <span className="brandTitleSub">Control</span>
+              </div>
+              <div className="brandSub">{activeKey}</div>
+            </div>
+          </div>
+
+          <div className="navRight">
+            <button
+              className={`burger ${menuOpen ? "open" : ""}`}
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMenuOpen(true)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -148,16 +154,14 @@ export default function AdminDashboard() {
               Logout
             </button>
 
-            <div className="drawerHint">
-              Tip: ESC to close • Swipe / Click outside
-            </div>
+            <div className="drawerHint">Tip: ESC to close • Swipe / Click outside</div>
           </div>
         </aside>
       </div>
 
-      {/* ✅ Main (edge-to-edge on mobile, full on desktop) */}
+      {/* ✅ Main */}
       <main className="main">
-        {/* ✅ Hero always visible */}
+        {/* ✅ Hero */}
         <section className="heroOne">
           <div className="heroCard">
             <div className="heroTop">
@@ -188,7 +192,62 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* ✅ Content area */}
+        {/* ✅ Admin Info */}
+        <section className="adminInfo">
+          <div className="infoCard">
+            <div className="infoHead">
+              <div className="infoTitle">Admin Power & Responsibilities</div>
+              <span className="infoBadge">Control Center</span>
+            </div>
+
+            <p className="infoDesc">
+              This Admin Panel is designed to give you full authority over the system — secure access,
+              real-time control, and clean management of users & operations.
+            </p>
+
+            <div className="infoGrid">
+              <div className="infoItem">
+                <div className="infoIcon">🧠</div>
+                <div>
+                  <div className="infoItemTitle">System Control</div>
+                  <div className="infoItemText">
+                    Manage settings, monitor activity, and maintain platform stability.
+                  </div>
+                </div>
+              </div>
+
+              <div className="infoItem">
+                <div className="infoIcon">👥</div>
+                <div>
+                  <div className="infoItemTitle">User Management</div>
+                  <div className="infoItemText">Create, verify, block, or update users with full tracking.</div>
+                </div>
+              </div>
+
+              <div className="infoItem">
+                <div className="infoIcon">🛡️</div>
+                <div>
+                  <div className="infoItemTitle">Security & Access</div>
+                  <div className="infoItemText">Role-based access to protect sensitive data and actions.</div>
+                </div>
+              </div>
+
+              <div className="infoItem">
+                <div className="infoIcon">📈</div>
+                <div>
+                  <div className="infoItemTitle">Reports & Insights</div>
+                  <div className="infoItemText">Quick overview of performance, growth, and important system actions.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="infoFooter">
+              <span className="infoNote">Built for speed • Secure by design • Mobile-ready UI</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ✅ Content */}
         <section className="tabArea">
           <div className="tabCard">
             <div className="tabHead">
@@ -199,13 +258,11 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="tabBody">
-              {isDashboard ? <DashboardStatic /> : <Outlet />}
-            </div>
+            <div className="tabBody">{isDashboard ? <DashboardStatic /> : <Outlet />}</div>
           </div>
         </section>
 
-        {/* ✅ Footer */}
+        {/* ✅ Footer (MATCHES navbar) */}
         <footer className="foot">
           <div className="footLeft">
             <span className="footTag">Admin</span>
@@ -227,10 +284,17 @@ const css = `
     --bg2:#eff6ff;
     --bg3:#ecfeff;
     --bg4:#f0fdf4;
+
     --ink:#0b1220;
     --muted: rgba(11,18,32,.65);
+
     --shadow: 0 30px 90px rgba(0,0,0,.16);
-    --glass: rgba(255,255,255,.62);
+
+    /* ✅ SINGLE THEME for navbar + footer */
+    --roseDark: rgba(190, 24, 93, 0.92);
+    --roseBorder: rgba(255,255,255,.18);
+    --roseGlow: rgba(190,24,93,.35);
+    --roseSoft: rgba(255, 182, 213, .95);
   }
 
   *{ box-sizing:border-box; }
@@ -238,7 +302,6 @@ const css = `
   body{ margin:0; overflow-x:hidden; }
   #root{ min-height:100%; }
 
-  /* ✅ full screen base */
   .ad{
     min-height:100vh;
     width: 100%;
@@ -249,58 +312,82 @@ const css = `
       linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 34%, var(--bg3) 67%, var(--bg4) 100%);
     color:var(--ink);
   }
-
-  /* lock scroll when drawer open */
   .ad.lock{ height:100vh; overflow:hidden; }
 
-  /* ✅ Sticky Nav edge-to-edge */
+  /* ✅ NAV WRAP: safe top spacing */
+  .navWrap{
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: transparent;
+  }
+
+  /* ✅ NAV: dark rose */
   .nav{
-    position:sticky;
-    top:0;
-    z-index:50;
-    width: 100%;
+    width:100%;
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    padding: 12px 14px; /* small safe padding */
-    border-bottom: 1px solid rgba(255,255,255,.55);
-    background: rgba(255,255,255,.55);
-    backdrop-filter: blur(14px);
-  }
 
-  .navLeft{ display:flex; align-items:center; gap:12px; min-width: 220px; cursor:pointer; }
+    margin:0;
+    padding:12px 14px;
+
+    background: var(--roseDark);
+    backdrop-filter: blur(14px);
+
+    border-top: 1px solid var(--roseBorder);
+    border-bottom: 1px solid var(--roseBorder);
+    box-shadow: 0 18px 45px var(--roseGlow);
+
+    position:relative;
+    overflow:hidden;
+  }
+  .nav::before{ content:none; }
+
+  .navLeft{ display:flex; align-items:center; gap:12px; min-width:220px; cursor:pointer; position:relative; z-index:1; }
+
   .brandMark{
     width:42px; height:42px; border-radius:16px;
     display:flex; align-items:center; justify-content:center;
     font-weight:1100;
-    background: rgba(255,255,255,.78);
-    border: 1px solid rgba(11,18,32,.10);
-    box-shadow: 0 18px 40px rgba(0,0,0,.10);
-    position:relative;
-    overflow:hidden;
-  }
-  .brandMark::after{
-    content:"";
-    position:absolute; inset:-40%;
-    background: radial-gradient(circle, rgba(124,58,237,.20), transparent 60%);
-    animation: floatGlow 6s ease-in-out infinite;
-  }
-  @keyframes floatGlow{
-    0%,100%{ transform: translate(-6%, -6%) rotate(0deg); }
-    50%{ transform: translate(8%, 10%) rotate(35deg); }
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(255,255,255,.30);
+    box-shadow: 0 18px 40px rgba(0,0,0,.12);
   }
 
-  .brandTitle{ font-weight:1100; letter-spacing:.2px; }
-  .brandSub{ font-weight:900; font-size:12px; color: var(--muted); margin-top:2px; }
+  .brandTitle{
+    font-weight: 1200;
+    letter-spacing: .3px;
+    font-size: 14px;
+    line-height: 1.1;
+    color: rgba(255,255,255,.96);
+  }
+  .brandTitleSub{
+    font-weight: 1100;
+    margin-left: 6px;
+    color: var(--roseSoft);
+  }
+  .titleDot{
+    margin: 0 6px;
+    font-weight: 1100;
+    color: rgba(255,255,255,.45);
+  }
+  .brandSub{
+    font-weight:900;
+    font-size:12px;
+    margin-top:3px;
+    color: rgba(255,255,255,.72);
+  }
 
-  .navRight{ display:flex; align-items:center; justify-content:flex-end; width:100%; }
+  .navRight{ display:flex; align-items:center; justify-content:flex-end; width:100%; position:relative; z-index:1; }
 
   .burger{
     width: 46px; height: 46px;
     border-radius: 16px;
-    border: 1px solid rgba(11,18,32,.10);
-    background: rgba(255,255,255,.75);
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.14);
     display:flex;
     align-items:center; justify-content:center; gap:4px;
     flex-direction:column;
@@ -308,20 +395,20 @@ const css = `
     transition: transform .15s ease;
   }
   .burger:hover{ transform: translateY(-1px); }
-  .burger span{ width:18px; height:2px; border-radius:99px; background: rgba(11,18,32,.85); }
+  .burger span{ width:18px; height:2px; border-radius:99px; background: rgba(255,255,255,.92); }
 
-  /* ✅ overlay full */
+  /* overlay */
   .overlay{
     position:fixed; inset:0;
     background: rgba(0,0,0,.38);
-    z-index:60;
+    z-index:90;
     opacity:0;
     pointer-events:none;
     transition: opacity .18s ease;
   }
   .overlay.show{ opacity:1; pointer-events:auto; }
 
-  /* ✅ drawer full height, edge to edge */
+  /* drawer */
   .drawer{
     position:absolute; top:0; right:0; height:100%;
     width: min(380px, 92vw);
@@ -354,38 +441,25 @@ const css = `
     border-radius: 20px;
     background: rgba(255,255,255,.72);
     border: 1px solid rgba(11,18,32,.08);
-    position:relative;
-    overflow:hidden;
-  }
-  .drawerProfile::before{
-    content:"";
-    position:absolute; inset:-30%;
-    background: radial-gradient(circle, rgba(34,197,94,.20), transparent 55%);
-    filter: blur(2px);
   }
 
   .avatar{
     width: 48px; height: 48px; border-radius: 16px;
     display:flex; align-items:center; justify-content:center;
     font-weight: 1100;
-    background: rgba(34,197,94,.18);
-    border: 1px solid rgba(34,197,94,.25);
-    position:relative;
-    z-index:1;
+    background: rgba(190,24,93,.14);
+    border: 1px solid rgba(190,24,93,.22);
   }
-  .pinfo{ position:relative; z-index:1; }
+
   .role{ font-size: 12px; font-weight: 1100; color: rgba(11,18,32,.70); margin-bottom: 2px; }
   .pname{ font-size: 16px; font-weight: 1100; line-height: 1.1; }
   .shineName{
-    background: linear-gradient(90deg, rgba(34,197,94,.95), rgba(59,130,246,.95), rgba(236,72,153,.95));
-    -webkit-background-clip:text;
-    background-clip:text;
-    color: transparent;
-    text-shadow: 0 10px 30px rgba(0,0,0,.10);
+    color: rgba(11,18,32,.92);
+    font-weight: 1100;
   }
   .pemail{ font-size: 12px; font-weight: 900; color: rgba(11,18,32,.62); margin-top: 3px; word-break: break-all; }
 
-  .drawerTabs{ display:flex; flex-direction:column; gap:8px; margin-top: 2px; }
+  .drawerTabs{ display:flex; flex-direction:column; gap:8px; }
   .drawerTab{
     width:100%;
     display:flex; align-items:center; gap:10px;
@@ -400,17 +474,11 @@ const css = `
     transition: transform .12s ease, background .12s ease;
   }
   .drawerTab:hover{ transform: translateY(-1px); background: rgba(255,255,255,.92); }
-  .drawerTab.active{ background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.30); }
+  .drawerTab.active{ background: rgba(190,24,93,.12); border-color: rgba(190,24,93,.20); }
   .dIco{ width: 26px; display:inline-flex; justify-content:center; }
   .chev{ margin-left:auto; opacity:.7; font-weight:1100; }
 
-  .drawerBottom{
-    margin-top:auto;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    padding-bottom: 8px;
-  }
+  .drawerBottom{ margin-top:auto; display:flex; flex-direction:column; gap:10px; padding-bottom: 8px; }
 
   .primaryBtn{
     border:none;
@@ -418,29 +486,30 @@ const css = `
     border-radius: 18px;
     font-weight: 1100;
     cursor:pointer;
-    color:#0b1220;
-    background: linear-gradient(90deg, rgba(34,197,94,.85), rgba(59,130,246,.75), rgba(236,72,153,.65));
+    color:#fff;
+    background: var(--roseDark);
     box-shadow: 0 18px 50px rgba(0,0,0,.14);
     transition: transform .14s ease;
+    border: 1px solid rgba(255,255,255,.18);
   }
   .primaryBtn:hover{ transform: translateY(-1px); }
 
-  .drawerHint{
-    font-size: 12px;
-    font-weight: 900;
-    color: rgba(11,18,32,.62);
-    text-align:center;
-  }
+  .drawerHint{ font-size: 12px; font-weight: 900; color: rgba(11,18,32,.62); text-align:center; }
 
-  /* ✅ MAIN: edge-to-edge on mobile, full width on desktop */
+  /* MAIN edge-to-edge */
   .main{
     width: 100%;
     max-width: 100%;
     margin: 0;
-    padding: 14px 14px 18px; /* minimal padding */
+    padding: 0;
   }
 
-  .heroOne{ margin-top: 8px; }
+  /* section spacing */
+  .heroOne{ padding: 12px 14px 0; }
+  .adminInfo{ padding: 14px 14px 0; }
+  .tabArea{ padding: 14px 14px 0; }
+  .foot{ margin: 14px 14px 16px; }
+
   .heroCard{
     width: 100%;
     background: rgba(255,255,255,.72);
@@ -460,8 +529,9 @@ const css = `
     border-radius: 999px;
     font-weight: 1100;
     font-size: 12px;
-    background: rgba(34,197,94,.14);
-    border: 1px solid rgba(34,197,94,.25);
+    background: rgba(190,24,93,.10);
+    border: 1px solid rgba(190,24,93,.18);
+    color: rgba(11,18,32,.88);
   }
 
   .pulseDot{
@@ -478,7 +548,7 @@ const css = `
 
   .hTitle{ margin: 12px 0 6px; font-size: clamp(22px, 4.4vw, 36px); font-weight: 1100; }
   .nameGlow{
-    background: linear-gradient(90deg, rgba(34,197,94,1), rgba(59,130,246,1), rgba(236,72,153,1));
+    background: linear-gradient(90deg, rgba(190,24,93,1), rgba(59,130,246,1), rgba(34,197,94,1));
     -webkit-background-clip:text; background-clip:text; color: transparent;
   }
 
@@ -506,7 +576,65 @@ const css = `
     pointer-events:none;
   }
 
-  .tabArea{ margin-top: 14px; }
+  .infoCard{
+    width: 100%;
+    background: rgba(255,255,255,.72);
+    border: 1px solid rgba(255,255,255,.62);
+    border-radius: 26px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+  }
+
+  .infoHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
+  .infoTitle{ font-weight: 1100; font-size: 16px; }
+  .infoBadge{
+    font-size: 12px;
+    font-weight: 1100;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(190,24,93,.10);
+    border: 1px solid rgba(190,24,93,.18);
+    color: rgba(11,18,32,.86);
+    white-space: nowrap;
+  }
+
+  .infoDesc{ margin: 0; font-size: 13px; font-weight: 900; color: rgba(11,18,32,.70); line-height: 1.55; }
+  .infoGrid{ margin-top: 12px; display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  .infoItem{
+    display:flex;
+    gap:10px;
+    padding: 12px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.78);
+    border: 1px solid rgba(11,18,32,.08);
+  }
+
+  .infoIcon{
+    width: 38px; height: 38px;
+    border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(190,24,93,.10);
+    border: 1px solid rgba(190,24,93,.16);
+    flex: 0 0 auto;
+  }
+
+  .infoItemTitle{ font-weight: 1100; font-size: 13px; }
+  .infoItemText{ margin-top: 4px; font-weight: 900; font-size: 12px; color: rgba(11,18,32,.68); line-height: 1.45; }
+
+  .infoFooter{ margin-top: 10px; }
+  .infoNote{
+    display:inline-block;
+    font-size: 12px;
+    font-weight: 900;
+    color: rgba(11,18,32,.62);
+    padding: 8px 10px;
+    border-radius: 14px;
+    background: rgba(190,24,93,.08);
+    border: 1px solid rgba(190,24,93,.14);
+  }
+
   .tabCard{
     width: 100%;
     background: rgba(255,255,255,.72);
@@ -526,67 +654,71 @@ const css = `
     padding: 2px 2px 12px;
     border-bottom: 1px solid rgba(11,18,32,.08);
   }
-  .tabTitle{
-    font-weight: 1100;
-    font-size: 16px;
-  }
+  .tabTitle{ font-weight: 1100; font-size: 16px; }
   .tabPills{ display:flex; gap: 8px; flex-wrap:wrap; }
+
   .pill{
     font-size: 12px;
     font-weight: 1100;
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(124,58,237,.12);
-    border: 1px solid rgba(124,58,237,.18);
-    color: rgba(76,29,149,.95);
+    background: rgba(190,24,93,.10);
+    border: 1px solid rgba(190,24,93,.18);
+    color: rgba(11,18,32,.86);
   }
   .pill.soft{
-    background: rgba(6,182,212,.12);
-    border-color: rgba(6,182,212,.18);
+    background: rgba(255, 182, 213, .18);
+    border-color: rgba(255, 182, 213, .26);
     color: rgba(11,18,32,.86);
   }
 
-  .tabBody{
-    padding-top: 14px;
-  }
+  .tabBody{ padding-top: 14px; }
 
+  /* ✅ FOOTER matches NAV */
   .foot{
-    margin-top: 14px;
-    width: 100%;
     display:flex;
     align-items:flex-start;
     justify-content:space-between;
     gap:12px;
+
     padding: 12px 14px;
     border-radius: 20px;
-    background: rgba(255,255,255,.58);
-    border: 1px solid rgba(255,255,255,.60);
+
+    background: var(--roseDark);
+    border: 1px solid var(--roseBorder);
+    box-shadow: 0 18px 45px var(--roseGlow);
+
     backdrop-filter: blur(14px);
   }
+
   .footLeft{ display:flex; align-items:center; gap:10px; }
   .footTag{
     font-size: 12px;
     font-weight: 1100;
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(34,197,94,.14);
-    border: 1px solid rgba(34,197,94,.25);
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.20);
+    color: rgba(255,255,255,.92);
     white-space: nowrap;
   }
-  .footName{ font-weight: 1100; white-space: nowrap; }
-  .footSmall{ font-size: 12px; font-weight: 900; color: rgba(11,18,32,.62); }
+  .footName{ font-weight: 1100; white-space: nowrap; color: rgba(255,255,255,.96); }
+  .footSmall{ font-size: 12px; font-weight: 900; color: rgba(255,255,255,.78); }
 
-  /* ✅ Mobile perfect fit */
   @media (max-width: 980px){
     .miniRow{ grid-template-columns: 1fr; }
+    .infoGrid{ grid-template-columns: 1fr; }
     .foot{ flex-direction:column; align-items:flex-start; }
   }
 
-  /* ✅ True edge-to-edge on very small phones */
   @media (max-width: 420px){
-    .nav{ padding: 10px 10px; }
-    .main{ padding: 10px 10px 14px; }
+    .nav{ padding: 12px 12px; }
+    .heroOne{ padding: 10px 12px 0; }
+    .adminInfo{ padding: 12px 12px 0; }
+    .tabArea{ padding: 12px 12px 0; }
+    .foot{ margin: 12px 12px 14px; border-radius: 18px; }
     .heroCard{ padding: 14px; border-radius: 22px; }
+    .infoCard{ padding: 12px; border-radius: 22px; }
     .tabCard{ padding: 12px; border-radius: 22px; }
     .drawer{ width: 92vw; padding: 12px; }
   }

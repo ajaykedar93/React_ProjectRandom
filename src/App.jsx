@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 /* ================== AUTH PAGES ================== */
@@ -14,8 +15,6 @@ import DocumentUpload from "./Pages/document";
 import DocumentGet from "./Pages/documentget";
 import Addtextdoc from "./Pages/Addtextdoc";
 import Gettextdoc from "./Pages/Gettextdoc";
-
-/* ✅ NEW: Important Work Page (path: Pages/Work/Importantwork.jsx) */
 import Importantwork from "./Pages/Work/Importantwork";
 
 /* ================== ADMIN LAYOUT ================== */
@@ -51,50 +50,128 @@ function AdminRoute({ children }) {
   return children;
 }
 
+/**
+ * ✅ Global API warm-up (fast first login)
+ * - Fix: /health 404 doesn't throw, so we check res.ok and fallback to "/"
+ */
+function ApiWarmup() {
+  const API_BASE = useMemo(
+    () =>
+      import.meta?.env?.VITE_API_BASE?.trim() ||
+      "https://express-projectrandom.onrender.com",
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const warm = async () => {
+      try {
+        const r1 = await fetch(`${API_BASE}/health`, { method: "GET", cache: "no-store" });
+        if (!r1.ok) await fetch(`${API_BASE}/`, { method: "GET", cache: "no-store" });
+      } catch {
+        if (!cancelled) {
+          // ignore warmup errors
+        }
+      }
+    };
+
+    warm();
+    return () => {
+      cancelled = true;
+    };
+  }, [API_BASE]);
+
+  return null;
+}
+
+/**
+ * ✅ Optional: Persist auth on refresh (if your AuthContext doesn't already)
+ * - Reads saved user from localStorage (auth_user)
+ * - Only runs once
+ */
+function AuthBootstrap({ children }) {
+  const { user, loading, login } = useAuth();
+  const ran = useRef(false);
+
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+
+    try {
+      // If already logged-in or AuthContext still loading, skip
+      if (user || loading) return;
+
+      const raw = localStorage.getItem("auth_user");
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof login === "function") {
+        login(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, [user, loading, login]);
+
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* ================== AUTH ================== */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot" element={<Forgot />} />
+      {/* ✅ Warm API once globally */}
+      <ApiWarmup />
 
-        {/* ================== ADMIN ================== */}
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        >
-          <Route index element={<AdminPage />} />
-          <Route path="users" element={<UserAll />} />
-          <Route path="footer-admin" element={<FooterAdmin />} />
-        </Route>
+      {/* ✅ Ensure auth restore (optional) */}
+      <AuthBootstrap>
+        <Routes>
+          {/* ================== AUTH ================== */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot" element={<Forgot />} />
 
-        {/* ================== USER DASHBOARD ================== */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardHome />} />
-          <Route path="importantwork" element={<Importantwork />} /> {/* ✅ NEW */}
-          <Route path="document" element={<DocumentUpload />} />
-          <Route path="documentget" element={<DocumentGet />} />
-          <Route path="addtextdoc" element={<Addtextdoc />} />
-          <Route path="gettextdoc" element={<Gettextdoc />} />
-        </Route>
+          {/* ================== ADMIN ================== */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          >
+            {/* ✅ index = /admin */}
+            <Route index element={<AdminPage />} />
 
-        {/* ================== DEFAULT ================== */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+            {/* ✅ FIX: Your AdminDashboard tabs go to /admin/admin */}
+            <Route path="admin" element={<AdminPage />} />
+
+            <Route path="users" element={<UserAll />} />
+            <Route path="footer-admin" element={<FooterAdmin />} />
+          </Route>
+
+          {/* ================== USER DASHBOARD ================== */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardHome />} />
+            <Route path="importantwork" element={<Importantwork />} />
+            <Route path="document" element={<DocumentUpload />} />
+            <Route path="documentget" element={<DocumentGet />} />
+            <Route path="addtextdoc" element={<Addtextdoc />} />
+            <Route path="gettextdoc" element={<Gettextdoc />} />
+          </Route>
+
+          {/* ================== DEFAULT ================== */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthBootstrap>
     </BrowserRouter>
   );
 }

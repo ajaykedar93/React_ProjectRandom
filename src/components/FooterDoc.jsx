@@ -4,18 +4,38 @@ export default function FooterDoc() {
   return (
     <>
       <style>{`
-        .footerDoc {
-          background: linear-gradient(135deg, #1f1147, #2a145f, #3a1c71);
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
-          color: #f8fafc;
-          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-          width: 100%;
+        :root{
+          --roseDark: rgba(190, 24, 93, 0.92);   /* navbar/footer base */
+          --roseBorder: rgba(255,255,255,.16);
+          --roseSoft: rgba(255, 182, 213, .95); /* soft premium pink */
+          --roseGlow: rgba(190, 24, 93, .38);
         }
 
+        .footerDoc {
+          width: 100%;
+          background: var(--roseDark); /* ✅ match navbar */
+          border-top: 1px solid var(--roseBorder);
+          color: #f8fafc;
+          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* ✅ subtle soft shine (NOT gradient / NOT rainbow) */
+        .footerDoc::before{
+          content:"";
+          position:absolute;
+          inset:-60% -30%;
+          background: radial-gradient(circle, rgba(255,255,255,.12), transparent 60%);
+          transform: rotate(10deg);
+          pointer-events:none;
+        }
+
+        /* ✅ top accent (single theme) */
         .footerAccent {
           height: 4px;
-          background: linear-gradient(90deg, #ec4899, #facc15, #a855f7);
           width: 100%;
+          background: rgba(255, 182, 213, .85); /* ✅ soft pink */
         }
 
         .footerInner {
@@ -26,6 +46,8 @@ export default function FooterDoc() {
           align-items: center;
           justify-content: space-between;
           gap: 16px;
+          position: relative;
+          z-index: 1;
         }
 
         /* LEFT SIDE */
@@ -41,20 +63,18 @@ export default function FooterDoc() {
           gap: 8px;
           padding: 8px 14px;
           border-radius: 16px;
-          background: linear-gradient(
-            135deg,
-            rgba(236, 72, 153, 0.25),
-            rgba(250, 204, 21, 0.18)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          box-shadow: 0 12px 30px rgba(236, 72, 153, 0.35);
+
+          /* ✅ single-color glass */
+          background: rgba(255,255,255,.12);
+          border: 1px solid rgba(255,255,255,.20);
+          box-shadow: 0 12px 30px var(--roseGlow);
           user-select: none;
         }
 
         .codeText {
           font-weight: 900;
           font-size: 13px;
-          color: #fdf4ff;
+          color: rgba(255,255,255,.95);
         }
 
         .codeIcon {
@@ -63,8 +83,13 @@ export default function FooterDoc() {
           display: grid;
           place-items: center;
           border-radius: 999px;
-          background: radial-gradient(circle at 30% 30%, #facc15, #ec4899);
+
+          /* ✅ single accent */
+          background: rgba(255, 182, 213, .90);
           border: 1px solid rgba(255, 255, 255, 0.35);
+          color: rgba(11,18,32,.92);
+          font-size: 12px;
+          font-weight: 900;
         }
 
         .devText {
@@ -89,15 +114,14 @@ export default function FooterDoc() {
         .footerChip {
           padding: 8px 14px;
           border-radius: 16px;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.1),
-            rgba(255, 255, 255, 0.05)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.15);
+
+          /* ✅ single-color glass */
+          background: rgba(255,255,255,.10);
+          border: 1px solid rgba(255,255,255,.18);
+
           font-size: 12px;
-          color: rgba(255, 255, 255, 0.8);
-          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+          color: rgba(255, 255, 255, 0.88);
+          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.22);
           white-space: nowrap;
         }
 
@@ -105,9 +129,9 @@ export default function FooterDoc() {
         @media (max-width: 720px) {
           .footerInner {
             flex-direction: column;
-            align-items: center;     /* center */
-            justify-content: center; /* center */
-            text-align: center;      /* center text */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
           }
 
           .footerLeft {
@@ -125,7 +149,7 @@ export default function FooterDoc() {
           }
         }
 
-        /* ✅ EXTRA SMALL: still center, but allow full width if needed */
+        /* ✅ EXTRA SMALL: full width chips */
         @media (max-width: 420px) {
           .footerChip,
           .codeTag {
